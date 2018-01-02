@@ -10,7 +10,7 @@ import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 
 trait Database extends LazyLogging {
-  implicit val db = Database.forConfig("barbot")
+  implicit val db = Database.forConfig("barbot_db")
   implicit val userRepository = new UserRepository
   implicit val barRepository = new BarRepository
   implicit val visitRepository = new VisitRepository
@@ -21,6 +21,7 @@ trait Database extends LazyLogging {
     "visits" -> visitRepository.visitTableQuery,
     "flows" -> flowRepository.flowTableQuery)
 
+  // TODO add schema checking and migration code
   private def initTables: Unit = {
     tables.keys.foreach(tableCreator)
   }

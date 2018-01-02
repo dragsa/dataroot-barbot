@@ -1,11 +1,60 @@
 package org.gnat.barbot
 
+import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.{MalformedRequestContentRejection, RejectionHandler}
+import org.gnat.barbot.models.Bar
+import spray.json.JsObject
 
-trait ApiRouter extends Database{
+import scala.util.{Failure, Success}
+
+trait ApiRouter extends Database with JsonSupport {
+
+  implicit def registrationRejectionHandler =
+    RejectionHandler
+      .newBuilder()
+      .handle {
+        case MalformedRequestContentRejection(msg, err) =>
+          complete(StatusCodes.BadRequest, "wrong input data")
+      }
+      .result
 
   val route =
     pathSingleSlash {
       complete("root")
+    } ~ pathPrefix("register") {
+      pathEndOrSingleSlash {
+        post {
+          handleRejections(registrationRejectionHandler) {
+            entity(as[RegisterMessage]) { register =>
+              logger.info("Register Message received: " + register)
+              onComplete(barRepository.createOne(Bar(register.name, register.locationUrl))) {
+                case Success(bar) => complete(bar.id.get.toString)
+                case Failure(msg) => complete(StatusCodes.BadRequest, msg.getMessage)
+              }
+            }
+          }
+        }
+      }
+    } ~ pathPrefix("unregister") {
+      pathEndOrSingleSlash {
+        post {
+          handleRejections(registrationRejectionHandler) {
+            entity(as[UnregisterMessage]) { unregister =>
+              logger.info("Unregister Message received: " + unregister)
+              onSuccess(barRepository.getOneById(unregister.id)) {
+                case Some(bar) =>
+                  onSuccess(barRepository.updateOne(bar.copy(isActive = false))) {
+                    case 1 =>
+                      logger.info(bar + " was removed from active bar list")
+                      complete(bar.name + " was removed from active bar list")
+                    case 0 => complete(StatusCodes.BadRequest)
+                  }
+                case None => complete(StatusCodes.NotFound)
+              }
+            }
+          }
+        }
+      }
     }
 }

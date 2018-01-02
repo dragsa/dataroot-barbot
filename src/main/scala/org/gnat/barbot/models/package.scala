@@ -18,7 +18,8 @@ package object models {
 
   case class Bar(name: String,
                  infoSource: String,
-                 id: Int)
+                 isActive: Boolean = true,
+                 id: Option[Int] = None)
 
   case class Visit(user: Int,
                    place: Int,

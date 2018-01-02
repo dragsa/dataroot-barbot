@@ -7,6 +7,7 @@ import scala.concurrent.Future
 
 //case class Bar(name: String,
 //               infoSource: String,
+//               isActive: Boolean,
 //               id: Int)
 
 class BarTable(tag: Tag) extends Table[Bar](tag, "bars") {
@@ -14,10 +15,12 @@ class BarTable(tag: Tag) extends Table[Bar](tag, "bars") {
 
   def infoSource = column[String]("info_source")
 
+  def isActive = column[Boolean]("is_active")
+
   def id = column[Int]("id", O.PrimaryKey, O.Unique, O.AutoInc)
 
   def * =
-    (name, infoSource, id) <> (Bar.apply _ tupled, Bar.unapply)
+    (name, infoSource, isActive, id.?) <> (Bar.apply _ tupled, Bar.unapply)
 
 }
 
@@ -49,5 +52,9 @@ class BarRepository(implicit db: Database) {
 
   def getAll: Future[Seq[Bar]] = {
     db.run(barTableQuery.result)
+  }
+
+  def deleteOneById(id: Int): Future[Int] = {
+    db.run(barTableQuery.filter(_.id === id).delete)
   }
 }
