@@ -54,6 +54,10 @@ class BarRepository(implicit db: Database) {
     db.run(barTableQuery.result)
   }
 
+  def getAllActive: Future[Seq[Bar]] = {
+    db.run(barTableQuery.filter(_.isActive === true).result)
+  }
+
   def deleteOneById(id: Int): Future[Int] = {
     db.run(barTableQuery.filter(_.id === id).delete)
   }

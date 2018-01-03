@@ -1,14 +1,14 @@
-package org.gnat.barbot
+package org.gnat.barbot.http
 
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{MalformedRequestContentRejection, RejectionHandler}
 import org.gnat.barbot.models.Bar
-import spray.json.JsObject
+import org.gnat.barbot.Database
 
 import scala.util.{Failure, Success}
 
-trait ApiRouter extends Database with JsonSupport {
+trait ServerApiRouter extends Database with ServerJsonSupport {
 
   implicit def registrationRejectionHandler =
     RejectionHandler
