@@ -1,7 +1,6 @@
 {
   "PD1": [
     {
-      "id": 1,
       "name": "Pivnaya Duma",
       "location": "Spaska St, 5, Kyiv",
       "openHours": "11:00-23:30",
@@ -24,7 +23,6 @@
   ],
   "Staromak": [
     {
-      "id": 2,
       "name": "Staromak",
       "location": "Sychonih Strilciv St. 52",
       "openHours": "13:00-03:00",

@@ -11,5 +11,7 @@ libraryDependencies ++= Seq(
   "ch.qos.logback" % "logback-classic" % "1.2.3",
   "com.typesafe.scala-logging" %% "scala-logging" % "3.7.2",
   "com.typesafe.akka" %% "akka-http" % "10.0.11",
-  "com.typesafe.akka" %% "akka-http-spray-json" % "10.0.11"
+  "com.typesafe.akka" %% "akka-http-spray-json" % "10.0.11",
+  "com.typesafe.akka" %% "akka-slf4j" % "2.4.19",
+  "info.mukel" %% "telegrambot4s" % "3.0.14"
 )

@@ -56,5 +56,25 @@ trait ServerApiRouter extends Database with ServerJsonSupport {
           }
         }
       }
+    } ~ pathPrefix("update") {
+      pathEndOrSingleSlash {
+        post {
+          handleRejections(registrationRejectionHandler) {
+            entity(as[UpdateMessage]) { update =>
+              logger.info("Update Message received: " + update)
+              onSuccess(barRepository.getOneById(update.id)) {
+                case Some(bar) =>
+                  onSuccess(barRepository.updateOne(bar.copy(infoSource = update.locationUrl))) {
+                    case 1 =>
+                      logger.info(bar.name + " was updated")
+                      complete(bar.name + " was updated")
+                    case 0 => complete(StatusCodes.BadRequest)
+                  }
+                case None => complete(StatusCodes.NotFound)
+              }
+            }
+          }
+        }
+      }
     }
 }
