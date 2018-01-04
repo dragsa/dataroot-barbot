@@ -12,7 +12,7 @@
     <logger name="slick.jdbc.JdbcBackend.statement" level="INFO"/>
     <logger name="slick.jdbc.StatementInvoker.result" level="INFO"/>
     <logger name="org.gnat.barbot" level="DEBUG"/>
-    <logger name="akka" level="INFO" />
+    <logger name="akka" level="DEBUG" />
 
     <root level="info">
         <appender-ref ref="CONSOLE"/>

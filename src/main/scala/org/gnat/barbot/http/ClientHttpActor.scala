@@ -20,7 +20,7 @@ object ClientHttpActor {
 
 class ClientHttpActor extends Actor with ClientJsonSupport with ActorLogging {
 
-  var senderRef = sender
+//  var senderRef = sender
   implicit val materializer = ActorMaterializer(
     ActorMaterializerSettings(context.system))
   val http = Http(context.system)
@@ -30,16 +30,20 @@ class ClientHttpActor extends Actor with ClientJsonSupport with ActorLogging {
 
   override def receive: Receive = {
     case GetTarget(url) =>
+//      senderRef = sender
       http.singleRequest(HttpRequest(uri = url)).pipeTo(self)
     case HttpResponse(StatusCodes.OK, headers, entity, _) =>
       // TODO do we really need streaming here?
       entity.dataBytes
         .map(_.utf8String)
         .map(_.parseJson.convertTo[List[BarStateMessage]].head)
-        .runForeach(println)
+        .runForeach(bsm => {
+          log.info(s"sending next BSM to parent $bsm")
+          context.parent ! bsm
+        })
       self ! PoisonPill
     case resp @ HttpResponse(code, _, _, _) =>
-      log.info("request failed, response code: " + code)
+      log.info(s"request failed, response code: $code")
       resp.discardEntityBytes()
       self ! PoisonPill
     case _ => self ! PoisonPill
