@@ -42,6 +42,7 @@ trait Database extends LazyLogging {
   def initDatabase {
     logger.info("initialization started")
     initTables
+    // TODO add all of the below
     //    insertUsers
     //    insertBars
     //    insertVisits

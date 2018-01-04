@@ -10,7 +10,7 @@ import scala.util.{Failure, Success}
 
 trait ServerApiRouter extends Database with ServerJsonSupport {
 
-  implicit def registrationRejectionHandler =
+  implicit def barMaintenanceApiRejectionHandler =
     RejectionHandler
       .newBuilder()
       .handle {
@@ -25,7 +25,7 @@ trait ServerApiRouter extends Database with ServerJsonSupport {
     } ~ pathPrefix("register") {
       pathEndOrSingleSlash {
         post {
-          handleRejections(registrationRejectionHandler) {
+          handleRejections(barMaintenanceApiRejectionHandler) {
             entity(as[RegisterMessage]) { register =>
               logger.info("Register Message received: " + register)
               onComplete(barRepository.createOne(Bar(register.name, register.locationUrl))) {
@@ -39,7 +39,7 @@ trait ServerApiRouter extends Database with ServerJsonSupport {
     } ~ pathPrefix("unregister") {
       pathEndOrSingleSlash {
         post {
-          handleRejections(registrationRejectionHandler) {
+          handleRejections(barMaintenanceApiRejectionHandler) {
             entity(as[UnregisterMessage]) { unregister =>
               logger.info("Unregister Message received: " + unregister)
               onSuccess(barRepository.getOneById(unregister.id)) {
@@ -59,7 +59,7 @@ trait ServerApiRouter extends Database with ServerJsonSupport {
     } ~ pathPrefix("update") {
       pathEndOrSingleSlash {
         post {
-          handleRejections(registrationRejectionHandler) {
+          handleRejections(barMaintenanceApiRejectionHandler) {
             entity(as[UpdateMessage]) { update =>
               logger.info("Update Message received: " + update)
               onSuccess(barRepository.getOneById(update.id)) {

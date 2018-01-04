@@ -20,7 +20,9 @@ object ClientHttpActor {
 
 class ClientHttpActor extends Actor with ClientJsonSupport with ActorLogging {
 
-//  var senderRef = sender
+  // TODO is the context always pointing to parent
+  // and don't we need to keep sender ref to avoid lost messages?
+  //  var senderRef = sender
   implicit val materializer = ActorMaterializer(
     ActorMaterializerSettings(context.system))
   val http = Http(context.system)
@@ -30,7 +32,7 @@ class ClientHttpActor extends Actor with ClientJsonSupport with ActorLogging {
 
   override def receive: Receive = {
     case GetTarget(url) =>
-//      senderRef = sender
+      //      senderRef = sender
       http.singleRequest(HttpRequest(uri = url)).pipeTo(self)
     case HttpResponse(StatusCodes.OK, headers, entity, _) =>
       // TODO do we really need streaming here?
@@ -42,11 +44,13 @@ class ClientHttpActor extends Actor with ClientJsonSupport with ActorLogging {
           context.parent ! bsm
         })
       self ! PoisonPill
-    case resp @ HttpResponse(code, _, _, _) =>
+    case resp@HttpResponse(code, _, _, _) =>
       log.info(s"request failed, response code: $code")
       resp.discardEntityBytes()
       self ! PoisonPill
-    case _ => self ! PoisonPill
+    case um@_ =>
+      log.info(s"received unknown message $um")
+      self ! PoisonPill
   }
 
   override def preStart = {

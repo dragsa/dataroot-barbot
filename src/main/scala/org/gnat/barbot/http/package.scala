@@ -7,13 +7,13 @@ package object http {
 
   sealed trait BarMaintenanceMessage
 
-  final case class RegisterMessage(name: String, locationUrl: String)
-      extends BarMaintenanceMessage
+  case class RegisterMessage(name: String, locationUrl: String)
+    extends BarMaintenanceMessage
 
-  final case class UnregisterMessage(id: Int) extends BarMaintenanceMessage
+  case class UnregisterMessage(id: Int) extends BarMaintenanceMessage
 
-  final case class UpdateMessage(id: Int, locationUrl: String)
-      extends BarMaintenanceMessage
+  case class UpdateMessage(id: Int, locationUrl: String)
+    extends BarMaintenanceMessage
 
   trait ServerJsonSupport extends SprayJsonSupport with DefaultJsonProtocol {
     implicit val registerFormat = jsonFormat2(RegisterMessage)
@@ -23,26 +23,27 @@ package object http {
 
   sealed trait ExternalEventMessage
 
-  final case class BarStateMessage(name: String,
+  case class BarStateMessage(name: String,
                                    location: String,
                                    openHours: String,
                                    beersList: List[String],
                                    wineList: List[String],
                                    cuisine: List[String])
-      extends ExternalEventMessage
+    extends ExternalEventMessage
 
   trait ClientJsonSupport extends SprayJsonSupport with DefaultJsonProtocol {
     implicit val barStateFormat = jsonFormat(BarStateMessage.apply,
-                                             "name",
-                                             "location",
-                                             "openHours",
-                                             "beer",
-                                             "wine",
-                                             "cuisine")
+      "name",
+      "location",
+      "openHours",
+      "beer",
+      "wine",
+      "cuisine")
   }
-//  TODO possibly another way to do unmarshalling below?
-//  object ClientJsonSupport extends SprayJsonSupport with DefaultJsonProtocol {
-//    implicit val barStateFormat = jsonFormat7(BarStateMessage)
-//  }
+
+  //  TODO possibly another way to do unmarshalling below?
+  //  object ClientJsonSupport extends SprayJsonSupport with DefaultJsonProtocol {
+  //    implicit val barStateFormat = jsonFormat7(BarStateMessage)
+  //  }
 
 }

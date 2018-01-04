@@ -3,12 +3,9 @@ package org.gnat.barbot.http
 import akka.actor.{Actor, ActorLogging, ActorRef, Cancellable, Props}
 import com.typesafe.config.Config
 import org.gnat.barbot.Database
-import org.gnat.barbot.http.ClientCachingActor.{
-  CachingActorProvideCache,
-  CachingActorRefreshCache,
-  CachingActorStart
-}
+import org.gnat.barbot.http.ClientCachingActor.{CachingActorProvideCache, CachingActorRefreshCache, CachingActorStart}
 import org.gnat.barbot.http.ClientHttpActor.GetTarget
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 
@@ -27,7 +24,7 @@ object ClientCachingActor {
 }
 
 class ClientCachingActor(config: Config)(implicit db: Database)
-    extends Actor
+  extends Actor
     with ActorLogging {
 
   var refreshTimer: Option[Cancellable] = None
@@ -41,9 +38,9 @@ class ClientCachingActor(config: Config)(implicit db: Database)
       refreshTimer.foreach(_.cancel)
       refreshTimer = Option(
         context.system.scheduler.schedule(0 seconds,
-                                          cacheTimeout seconds,
-                                          self,
-                                          CachingActorRefreshCache))
+          cacheTimeout seconds,
+          self,
+          CachingActorRefreshCache))
     case CachingActorRefreshCache =>
       log.info("received Refresh message")
       db.barRepository.getAllActive.map(
@@ -54,9 +51,10 @@ class ClientCachingActor(config: Config)(implicit db: Database)
     case CachingActorProvideCache =>
       senderRef = Option(sender)
       senderRef.foreach(_ ! cachedTargets)
-    case bsm @ BarStateMessage(_, _, _, _, _, _) =>
+    case bsm@BarStateMessage(_, _, _, _, _, _) =>
+      // TODO cache update code here
       log.info(s"received next BSM from child $bsm")
-    case um @ _ =>
+    case um@_ =>
       log.info(s"received unknown message $um")
   }
 
