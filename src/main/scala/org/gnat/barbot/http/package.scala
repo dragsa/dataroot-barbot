@@ -31,6 +31,8 @@ package object http {
                                    cuisine: List[String])
     extends ExternalEventMessage
 
+  case class BarExpiredMessage(id: Int) extends ExternalEventMessage
+
   trait ClientJsonSupport extends SprayJsonSupport with DefaultJsonProtocol {
     implicit val barStateFormat = jsonFormat(BarStateMessage.apply,
       "name",

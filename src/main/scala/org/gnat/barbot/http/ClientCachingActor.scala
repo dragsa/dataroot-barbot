@@ -30,7 +30,7 @@ class ClientCachingActor(config: Config)(implicit db: Database)
   var refreshTimer: Option[Cancellable] = None
   var cachedTargets: Map[String, String] = Map[String, String]()
   var senderRef: Option[ActorRef] = None
-  val cacheTimeout = config.getInt("cacheTimeout")
+  val cacheTimeout = config.getInt("cache-timeout")
 
   override def receive: Receive = {
     case CachingActorStart =>
@@ -47,15 +47,18 @@ class ClientCachingActor(config: Config)(implicit db: Database)
         bars =>
           bars.foreach(activeBar =>
             context.actorOf(Props(new ClientHttpActor)) ! GetTarget(
-              activeBar.infoSource)))
+              activeBar.id.get, activeBar.infoSource)))
     case CachingActorProvideCache =>
       senderRef = Option(sender)
       senderRef.foreach(_ ! cachedTargets)
     case bsm@BarStateMessage(_, _, _, _, _, _) =>
       // TODO cache update code here
-      log.info(s"received next BSM from child $bsm")
+      log.info(s"received next BStatM from child: $bsm")
+    case bem@BarExpiredMessage(id) =>
+      // TODO expiration logic here, maybe dead + time to retry flags in bars table?
+      log.info(s"received BExpM from child: $bem")
     case um@_ =>
-      log.info(s"received unknown message $um")
+      log.info(s"received unexpected message $um")
   }
 
   private def updateTargetsCache = ???
