@@ -21,8 +21,10 @@ object ClientHttpActor {
 
 class ClientHttpActor extends Actor with ClientJsonSupport with ActorLogging {
 
-  // TODO is the context always pointing to parent
-  // and don't we need to keep sender ref to avoid lost messages?
+  // TODO Caching -> Http refs doubt
+  // is the context always pointing to parent?
+  // and thus don't we need to keep sender ref to avoid lost messages?
+  // var senderRef = Option[ActorRef]
   var barId: Option[Int] = None
   implicit val materializer = ActorMaterializer(
     ActorMaterializerSettings(context.system))
@@ -49,11 +51,13 @@ class ClientHttpActor extends Actor with ClientJsonSupport with ActorLogging {
     case resp@HttpResponse(code, headers, entity, _) =>
       log.info(s"request failed, response code: $code")
       resp.discardEntityBytes()
+      // TODO for simplicity all non-200OK responses are now trigger for expiration
       val bem = BarExpiredMessage(barId.get)
       log.info(s"sending next BExpM to parent: $bem")
       context.parent ! bem
       self ! PoisonPill
     case Failure(msg) =>
+      // TODO all Failures are given a chance to retry and restart new actor
       log.info(s"actor failure happened: $msg")
     case um@_ =>
       log.info(s"received unexpected message $um")
