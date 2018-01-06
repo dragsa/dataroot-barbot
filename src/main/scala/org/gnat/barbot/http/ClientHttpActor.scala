@@ -58,7 +58,7 @@ class ClientHttpActor(config: Config) extends Actor with ClientJsonSupport with 
       log.info(s"actor ${self.path.name} request failed, response code:\n $code")
       resp.discardEntityBytes()
       // TODO for simplicity all non-200OK responses are now triggers for expiration
-      // target in question will not be in refresh list for http.client.limb-resurrection-timeout seconds
+      // target in question will not be in refresh list for http.client.limbo-resurrection-timeout seconds
       val bem = BarExpiredMessage(barId.get)
       log.info(s"actor ${self.path.name} sending next BarExpired to parent:\n $bem")
       context.parent ! bem

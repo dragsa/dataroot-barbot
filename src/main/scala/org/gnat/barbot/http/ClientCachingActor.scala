@@ -26,7 +26,7 @@ object ClientCachingActor {
 
   object CacheHolder {
     // [Bar Id, (Bar State, Bar Limb Time)] Bar Limb Time: 0 - if alive, not 0 - if is "sort of dead"
-    // dead means that target will not be included during decision calculations
+    // "sort of dead" means that target won't be included during decision calculations
     var cacheValue: Map[Int, (BarStateMessage, Long)] = Map[Int, (BarStateMessage, Long)]()
 
     def eligible = cacheValue.filter(target => !target._2._1.name.isEmpty && target._2._2 == 0L)
@@ -44,7 +44,7 @@ class ClientCachingActor(config: Config)(implicit db: Database)
   var cachedTargets = ClientCachingActor.CacheHolder
   var senderRef: Option[ActorRef] = None
   val cacheTimeout = config.getInt("cache-timeout")
-  val limbResurrectionTimeout = config.getLong("limb-resurrection-timeout")
+  val limboResurrectionTimeout = config.getLong("limbo-resurrection-timeout")
   val banishToValhalla = config.getBoolean("banish-to-valhalla")
 
   //  override def supervisorStrategy: SupervisorStrategy = OneForOneStrategy() {
@@ -62,17 +62,11 @@ class ClientCachingActor(config: Config)(implicit db: Database)
   override def receive: Receive = {
     case CachingActorStart =>
       log.info("received Start message")
-      //      refreshTimer.foreach(_.cancel)
       refreshTimer = Option(
         context.system.scheduler.schedule(10 seconds,
           cacheTimeout seconds,
           self,
           CachingActorRefreshCache))
-//      db.barRepository.getAllActive.map(
-//        bars => bars.map(_.id.get)).map(initialCache => {
-//        log.debug(s"initial cache contains targets with Ids:\n $initialCache")
-//        cachedTargets.cacheValue = (initialCache zip List.fill(initialCache.size)(BarStateMessage("", "", "", List(), List(), List()), 0L)).toMap
-//      })
 
     case CachingActorRefreshCache =>
       log.info("received Refresh message")
@@ -85,7 +79,7 @@ class ClientCachingActor(config: Config)(implicit db: Database)
             cachedTargets.cacheValue
           }
           else cachedTargets.cacheValue.filter(target => {
-            target._2._2 == 0L || System.nanoTime() - target._2._2 > limbResurrectionTimeout * 1000000000L
+            target._2._2 == 0L || System.nanoTime() - target._2._2 > limboResurrectionTimeout * 1000000000L
           })
           log.debug(s"currently next targets are eligible for selection algorithm:\n ${cachePrettyFormat(cachedTargets.eligible)}")
           val targetsReadyForRefresh = bars.filter(bar => cachedTargetsReadyForRefresh.contains(bar.id.get))
@@ -109,7 +103,7 @@ class ClientCachingActor(config: Config)(implicit db: Database)
     case bem@BarExpiredMessage(id) =>
       log.info(s"received BarExpired from child:\n $bem")
       cachedTargets.cacheValue = cachedTargets.cacheValue.updated(id, (cachedTargets.cacheValue(id)._1, System.nanoTime()))
-      log.info(s"disabling refresh of $id for $limbResurrectionTimeout seconds")
+      log.info(s"disabling refresh of $id for $limboResurrectionTimeout seconds")
 
     case bdm@BarDeadMessage(id) =>
       log.info(s"received BarDead from child:\n $bdm")
@@ -129,6 +123,4 @@ class ClientCachingActor(config: Config)(implicit db: Database)
     case um@_ =>
       log.info(s"received unexpected message:\n $um")
   }
-
-  private def updateTargetsCache = ???
 }
