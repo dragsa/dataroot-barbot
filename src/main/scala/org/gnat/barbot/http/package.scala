@@ -12,13 +12,13 @@ package object http {
 
   case class UnregisterMessage(id: Int) extends BarMaintenanceMessage
 
-  case class UpdateMessage(id: Int, locationUrl: String)
+  case class UpdateMessage(id: Int, locationUrl: String, isActive: Boolean)
     extends BarMaintenanceMessage
 
   trait ServerJsonSupport extends SprayJsonSupport with DefaultJsonProtocol {
     implicit val registerFormat = jsonFormat2(RegisterMessage)
     implicit val unregisterFormat = jsonFormat1(UnregisterMessage)
-    implicit val updateMessage = jsonFormat2(UpdateMessage)
+    implicit val updateMessage = jsonFormat3(UpdateMessage)
   }
 
   sealed trait ExternalEventMessage
@@ -32,6 +32,7 @@ package object http {
     extends ExternalEventMessage
 
   case class BarExpiredMessage(id: Int) extends ExternalEventMessage
+  case class BarDeadMessage(id: Int) extends ExternalEventMessage
 
   trait ClientJsonSupport extends SprayJsonSupport with DefaultJsonProtocol {
     implicit val barStateFormat = jsonFormat(BarStateMessage.apply,

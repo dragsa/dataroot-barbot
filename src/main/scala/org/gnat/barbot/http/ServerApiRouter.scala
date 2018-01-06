@@ -57,6 +57,7 @@ trait ServerApiRouter extends Database with ServerJsonSupport {
         }
       }
     } ~ pathPrefix("update") {
+      // TODO name update
       pathEndOrSingleSlash {
         post {
           handleRejections(barMaintenanceApiRejectionHandler) {
@@ -64,7 +65,7 @@ trait ServerApiRouter extends Database with ServerJsonSupport {
               logger.info("Update Message received: " + update)
               onSuccess(barRepository.getOneById(update.id)) {
                 case Some(bar) =>
-                  onSuccess(barRepository.updateOne(bar.copy(infoSource = update.locationUrl))) {
+                  onSuccess(barRepository.updateOne(bar.copy(infoSource = update.locationUrl, isActive = update.isActive))) {
                     case 1 =>
                       logger.info(bar.name + " was updated")
                       complete(bar.name + " was updated")
@@ -77,4 +78,5 @@ trait ServerApiRouter extends Database with ServerJsonSupport {
         }
       }
     }
+  // TODO status endpoint via GET and id parameter validation
 }

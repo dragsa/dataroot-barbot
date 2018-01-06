@@ -16,14 +16,14 @@ object Server extends App with ServerApiRouter with LazyLogging {
   implicit val executionContext = system.dispatcher
   implicit val dbRef = this
 
-  val httpServerConfig = ConfigFactory.load().getConfig("http.server")
-  val host = httpServerConfig.getString("host")
-  val port = httpServerConfig.getInt("port")
+  val serverConfig = ConfigFactory.load().getConfig("barbot.server")
+  val host = serverConfig.getString("host")
+  val port = serverConfig.getInt("port")
 
   val bindingFuture = Http().bindAndHandle(route, host, port)
 
-  val httpClientConfig = ConfigFactory.load().getConfig("http.client")
-  val client = system.actorOf(ClientCachingActor.props(httpClientConfig), name = "client-caching-actor")
+  val cacheConfig = ConfigFactory.load().getConfig("barbot.cache")
+  val client = system.actorOf(ClientCachingActor.props(cacheConfig), name = "client-caching-actor")
 
   initDatabase
   client ! CachingActorStart
