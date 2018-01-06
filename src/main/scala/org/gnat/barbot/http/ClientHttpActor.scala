@@ -20,6 +20,7 @@ object ClientHttpActor {
   def props(config: Config) = Props(new ClientHttpActor(config))
 }
 
+// TODO factor out pattern "actor ${self.path.name}" into logging configuration or utils
 class ClientHttpActor(config: Config) extends Actor with ClientJsonSupport with ActorLogging {
 
   // TODO Caching -> Http refs doubt
@@ -39,7 +40,7 @@ class ClientHttpActor(config: Config) extends Actor with ClientJsonSupport with 
     case gt@GetTarget(id, url) =>
       // senderRef = sender
       barId = Option(id)
-      log.info(s"actor ${self.path} received $gt")
+      log.info(s"actor ${self.path.name} received:\n $gt")
       http.singleRequest(HttpRequest(uri = url)).pipeTo(self)
 
     case HttpResponse(StatusCodes.OK, headers, entity, _) =>
@@ -48,38 +49,38 @@ class ClientHttpActor(config: Config) extends Actor with ClientJsonSupport with 
         .map(_.utf8String)
         .map(_.parseJson.convertTo[List[BarStateMessage]].head)
         .runForeach(bsm => {
-          log.info(s"sending next BStateM to parent:\n $bsm")
+          log.info(s"actor ${self.path.name} sending next BarState to parent:\n $bsm")
           context.parent ! (barId, bsm)
         })
       self ! PoisonPill
 
     case resp@HttpResponse(code, headers, entity, _) =>
-      log.info(s"request failed, response code:\n $code")
+      log.info(s"actor ${self.path.name} request failed, response code:\n $code")
       resp.discardEntityBytes()
-      // TODO for simplicity all non-200OK responses are now trigger for expiration
+      // TODO for simplicity all non-200OK responses are now triggers for expiration
       // target in question will not be in refresh list for http.client.limb-resurrection-timeout seconds
       val bem = BarExpiredMessage(barId.get)
-      log.info(s"sending next BExpireM to parent:\n $bem")
+      log.info(s"actor ${self.path.name} sending next BarExpired to parent:\n $bem")
       context.parent ! bem
       self ! PoisonPill
 
     case Failure(msg) =>
-      log.info(s"actor failure happened:\n $msg")
+      log.info(s"actor ${self.path.name} actor failure happened:\n $msg")
       val bdm = BarDeadMessage(barId.get)
-      log.info(s"sending next BDeadM to parent:\n $bdm")
+      log.info(s"actor ${self.path.name} sending next BarDead to parent:\n $bdm")
       context.parent ! BarDeadMessage(barId.get)
       self ! PoisonPill
 
     case um@_ =>
-      log.info(s"received unexpected message:\n $um")
+      log.info(s"actor ${self.path.name} received unexpected message:\n $um")
       self ! PoisonPill
   }
 
   override def preStart = {
-    log.debug(s"actor ${self.path} is alive and well")
+    log.debug(s"actor ${self.path.name} is alive and well")
   }
 
   override def postStop = {
-    log.debug(s"actor ${self.path} is dying")
+    log.debug(s"actor ${self.path.name} is dying")
   }
 }
