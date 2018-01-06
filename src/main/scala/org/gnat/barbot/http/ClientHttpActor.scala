@@ -44,23 +44,23 @@ class ClientHttpActor extends Actor with ClientJsonSupport with ActorLogging {
         .map(_.utf8String)
         .map(_.parseJson.convertTo[List[BarStateMessage]].head)
         .runForeach(bsm => {
-          log.info(s"sending next BStatM to parent $bsm")
-          context.parent ! bsm
+          log.info(s"sending next BStatM to parent:\n $bsm")
+          context.parent ! (barId, bsm)
         })
       self ! PoisonPill
     case resp@HttpResponse(code, headers, entity, _) =>
-      log.info(s"request failed, response code: $code")
+      log.info(s"request failed, response code:\n $code")
       resp.discardEntityBytes()
       // TODO for simplicity all non-200OK responses are now trigger for expiration
       val bem = BarExpiredMessage(barId.get)
-      log.info(s"sending next BExpM to parent: $bem")
+      log.info(s"sending next BExpM to parent:\n $bem")
       context.parent ! bem
       self ! PoisonPill
     case Failure(msg) =>
       // TODO all Failures are given a chance to retry and restart new actor
-      log.info(s"actor failure happened: $msg")
+      log.info(s"actor failure happened:\n $msg")
     case um@_ =>
-      log.info(s"received unexpected message $um")
+      log.info(s"received unexpected message:\n $um")
       self ! PoisonPill
   }
 
