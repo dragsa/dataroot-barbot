@@ -1,45 +1,45 @@
 {
-  "PD1": [
-    {
-      "name": "Pivnaya Duma",
-      "location": "Spaska St, 5, Kyiv",
-      "openHours": "11:00-23:30",
-      "beer": [
-        "light",
-        "dark",
-        "red",
-        "cider"
-      ],
-      "wine": [
-        "red dry",
-        "red semi-sweet",
-        "white sweet"
-      ],
-      "cuisine": [
-        "european",
-        "italian"
-      ]
-    }
-  ],
-  "Staromak": [
-    {
-      "name": "Staromak",
-      "location": "Sychonih Strilciv St. 52",
-      "openHours": "13:00-03:00",
-      "beer": [
-        "light",
-        "dark",
-        "craft"
-      ],
-      "wine": [
-        "red dry",
-        "white dry"
-      ],
-      "cuisine": [
-        "european",
-        "czech",
-        "jewish"
-      ]
-    }
-  ]
+  "PD1": {
+    "name": "Pivnaya Duma",
+    "location": "Spaska St, 5, Kyiv",
+    "openHours": "11:00-23:30",
+    "beer": [
+      "light",
+      "dark",
+      "red",
+      "cider"
+    ],
+    "wine": [
+      "red dry",
+      "red semi-sweet",
+      "white sweet"
+    ],
+    "cuisine": [
+      "european",
+      "italian"
+    ]
+  },
+  "Staromak": {
+    "name": "Staromak",
+    "location": "Sychonih Strilciv St. 52",
+    "openHours": "13:00-03:00",
+    "beer": [
+      "light",
+      "dark",
+      "craft"
+    ],
+    "wine": [
+      "red dry",
+      "white dry"
+    ],
+    "cuisine": [
+      "european",
+      "czech",
+      "jewish"
+    ]
+  },
+  "Error": {
+    "name": "Not valid name",
+    "age": 10
+  }
 }

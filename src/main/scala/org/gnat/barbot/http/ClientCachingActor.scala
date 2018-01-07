@@ -96,7 +96,7 @@ class ClientCachingActor(config: Config)(implicit db: Database)
 
     // TODO type erasure here, seems to be safe due to actor messaging in place
     case bsmTuple: (Some[Int], BarStateMessage) =>
-      log.info(s"received next BStateM for bar ${bsmTuple._1.get} from child:\n ${bsmTuple._2}")
+      log.info(s"received next BarState for bar ${bsmTuple._1.get} from child:\n ${bsmTuple._2}")
       cachedTargets.cacheValue = cachedTargets.cacheValue.updated(bsmTuple._1.get, (bsmTuple._2, 0L))
       log.debug(s"current cache state:\n $cachedTargets")
 

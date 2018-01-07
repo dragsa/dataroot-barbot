@@ -47,7 +47,13 @@ class ClientHttpActor(config: Config) extends Actor with ClientJsonSupport with 
       // TODO do we really need streaming here?
       entity.dataBytes
         .map(_.utf8String)
-        .map(_.parseJson.convertTo[List[BarStateMessage]].head)
+        .map { potentialEntity =>
+          val parsedEntity = potentialEntity.parseJson
+          log.debug(s"parsed next content:\n $parsedEntity")
+          val unmarshallingEntity = parsedEntity.convertTo[BarStateMessage]
+          log.debug(s"unmarshalling next entity:\n $unmarshallingEntity")
+          unmarshallingEntity
+        }
         .runForeach(bsm => {
           log.info(s"actor ${self.path.name} sending next BarState to parent:\n $bsm")
           context.parent ! (barId, bsm)
