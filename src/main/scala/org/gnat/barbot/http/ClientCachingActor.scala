@@ -76,15 +76,18 @@ class ClientCachingActor(config: Config)(implicit db: Database)
             val initialCache = bars.map(_.id.get)
             log.debug(s"initial cache contains targets with Ids:\n ${iterableIdsPrettyFormat(initialCache)}")
             cachedTargets.cacheValue = (initialCache zip List.fill(initialCache.size)(BarStateMessage("", "", "", List(), List(), List()), 0L)).toMap
-            cachedTargets.cacheValue
+            initialCache
           }
-          else cachedTargets.cacheValue.filter(target => {
-            target._2._2 == 0L || System.nanoTime() - target._2._2 > limboResurrectionTimeout * 1000000000L
-          })
+          else {
+            val currentlyWatched = cachedTargets.cacheValue.filter(target => {
+              target._2._2 == 0L || System.nanoTime() - target._2._2 > limboResurrectionTimeout * 1000000000L
+            }).keys.toSeq
+            (bars.map(_.id.get) diff cachedTargets.cacheValue.keys.toSeq) ++ currentlyWatched
+          }
           log.debug(s"currently next targets are eligible for selection algorithm:\n ${cachePrettyFormat(cachedTargets.eligible)}")
           val targetsReadyForRefresh = bars.filter(bar => cachedTargetsReadyForRefresh.contains(bar.id.get))
           log.debug(s"active targets in database:\n ${iterableIdsPrettyFormat(bars.map(_.id.get))}")
-          log.debug(s"active targets in cache:\n ${iterableIdsPrettyFormat(cachedTargetsReadyForRefresh.keys)}")
+          log.debug(s"active targets in cache:\n ${iterableIdsPrettyFormat(cachedTargetsReadyForRefresh)}")
           targetsReadyForRefresh.foreach(target =>
             context.actorOf(Props(new ClientHttpActor(config))) ! GetTarget(
               target.id.get, target.infoSource))

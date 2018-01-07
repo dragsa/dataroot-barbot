@@ -50,6 +50,7 @@ class ClientHttpActor(config: Config) extends Actor with ClientJsonSupport with 
         .map { potentialEntity =>
           val parsedEntity = potentialEntity.parseJson
           log.debug(s"parsed next content:\n $parsedEntity")
+          // TODO signal to parent that convertTo was not successful
           val unmarshallingEntity = parsedEntity.convertTo[BarStateMessage]
           log.debug(s"unmarshalling next entity:\n $unmarshallingEntity")
           unmarshallingEntity
@@ -63,19 +64,22 @@ class ClientHttpActor(config: Config) extends Actor with ClientJsonSupport with 
     case resp@HttpResponse(code, headers, entity, _) =>
       log.info(s"actor ${self.path.name} request failed, response code:\n $code")
       resp.discardEntityBytes()
-      // TODO for simplicity all non-200OK responses are now triggers for expiration
-      // target in question will not be in refresh list for http.client.limbo-resurrection-timeout seconds
-      val bem = BarExpiredMessage(barId.get)
-      log.info(s"actor ${self.path.name} sending next BarExpired to parent:\n $bem")
-      context.parent ! bem
+      // TODO for simplicity all non-200OK responses are triggers for target becoming dead
+      // after this the only way for target to get back - update itself via public API
+      // see barbot.cache.banish-to-valhalla for details
+      log.info(s"actor ${self.path.name} sending BarDead to parent for target:\n ${barId.get}")
+      context.parent ! BarDeadMessage(barId.get)
       self ! PoisonPill
 
     case Failure(msg) =>
       log.info(s"actor ${self.path.name} actor failure happened:\n $msg")
-      val bdm = BarDeadMessage(barId.get)
-      log.info(s"actor ${self.path.name} sending next BarDead to parent:\n $bdm")
-      context.parent ! BarDeadMessage(barId.get)
+      // TODO for simplicity all Failures are triggers for target to be temporary excluded
+      // (so far network issue is the only event identified leading to Failure)
+      // see barbot.cache.limbo-resurrection-timeout for details
+      log.info(s"actor ${self.path.name} sending next BarExpired to parent for target:\n ${barId.get}")
+      context.parent ! BarExpiredMessage(barId.get)
       self ! PoisonPill
+
 
     case um@_ =>
       log.info(s"actor ${self.path.name} received unexpected message:\n $um")
