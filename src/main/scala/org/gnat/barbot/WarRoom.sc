@@ -10,3 +10,6 @@ val firstEncounter =
      | in getting wasted today and many other days.
     """
 String.format(firstEncounter, "TEST")
+'test
+
+

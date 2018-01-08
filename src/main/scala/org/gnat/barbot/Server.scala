@@ -7,7 +7,7 @@ import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import org.gnat.barbot.http._
 import org.gnat.barbot.http.ClientCachingActor._
-import org.gnat.barbot.tele.BarCrawlerBotActor
+import org.gnat.barbot.tele.BotDispatcherActor
 
 import scala.io.StdIn
 
@@ -26,10 +26,10 @@ object Server extends App with ServerApiRouter with LazyLogging {
 
   implicit val barbotConfig = ConfigFactory.load().getConfig("barbot")
   val barCachingActor = system.actorOf(ClientCachingActor.props, name = "client-caching-actor")
-  val barBot = system.actorOf(BarCrawlerBotActor.props, name = "bar-crawler-bot-actor")
+  val barCrawlerBotActor = system.actorOf(BotDispatcherActor.props, name = "bar-crawler-bot-actor")
 
-  initDatabase
-  barCachingActor ! CachingActorStart
+//  initDatabase
+//  barCachingActor ! CachingActorStart
 
   logger.info("Started server, press enter to stop")
   StdIn.readLine()

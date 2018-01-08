@@ -1,6 +1,6 @@
 package org.gnat.barbot.tele
 
-object BarCrawlerBotPhrases {
+object BotAlphabet {
   val firstEncounter =
     s"""Hello, %s!
        |it is the first time we see each other.
@@ -13,4 +13,8 @@ object BarCrawlerBotPhrases {
     """
 
   val helloReply = "ready so serve, my Lord!"
+
+  val userNotFound = "user is unknown"
+
+  val commandNotFound = "command %s is not clear..."
 }
