@@ -1,4 +1,0 @@
-System.nanoTime()
-943776208911L
-120000000000L
-System.nanoTime() - 943776208911L

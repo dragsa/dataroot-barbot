@@ -17,18 +17,19 @@ object ClientHttpActor {
 
   case class GetLocation(url: String) extends HttpActorRequest
 
-  def props(config: Config) = Props(new ClientHttpActor(config))
+  def props(implicit config: Config) = Props(new ClientHttpActor)
 }
 
 // TODO factor out pattern "actor ${self.path.name}" into logging configuration or utils
-class ClientHttpActor(config: Config) extends Actor with ClientJsonSupport with ActorLogging {
+class ClientHttpActor(implicit config: Config) extends Actor with ClientJsonSupport with ActorLogging {
 
   // TODO Caching -> Http refs doubt
   // is the context always pointing to parent?
   // and thus don't we need to keep sender ref to avoid lost messages?
   // var senderRef = Option[ActorRef]
   var barId: Option[Int] = None
-  val banishToValhalla = config.getBoolean("banish-to-valhalla")
+  val cacheConfig = config.getConfig("cache")
+  val banishToValhalla = cacheConfig.getBoolean("banish-to-valhalla")
   implicit val materializer = ActorMaterializer(ActorMaterializerSettings(context.system))
   val http = Http(context.system)
 

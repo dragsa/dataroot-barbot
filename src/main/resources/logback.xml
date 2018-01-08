@@ -15,7 +15,7 @@
     <logger name="org.gnat.barbot" level="DEBUG"/>
 
     <!-- first place to debug-->
-    <logger name="akka" level="DEBUG" />
+    <logger name="akka" level="INFO" />
 
     <root level="info">
         <appender-ref ref="CONSOLE"/>

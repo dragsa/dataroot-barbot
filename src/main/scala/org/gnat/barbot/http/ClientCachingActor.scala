@@ -21,8 +21,8 @@ object ClientCachingActor {
 
   case object CachingActorProvideCache extends CachingActorControlMessage
 
-  def props(config: Config)(implicit db: Database) =
-    Props(new ClientCachingActor(config))
+  def props(implicit config: Config, db: Database) =
+    Props(new ClientCachingActor)
 
   object CacheHolder {
     // [Bar Id, (Bar State, Bar Limb Time)] Bar Limb Time: 0 - if alive, not 0 - if is "sort of dead"
@@ -36,16 +36,17 @@ object ClientCachingActor {
 
 }
 
-class ClientCachingActor(config: Config)(implicit db: Database)
+class ClientCachingActor(implicit config: Config, db: Database)
   extends Actor
     with ActorLogging {
 
   var refreshTimer: Option[Cancellable] = None
   var cachedTargets = ClientCachingActor.CacheHolder
   var senderRef: Option[ActorRef] = None
-  val cacheTimeout = config.getInt("cache-timeout")
-  val limboResurrectionTimeout = config.getLong("limbo-resurrection-timeout")
-  val banishToValhalla = config.getBoolean("banish-to-valhalla")
+  val cacheConfig = config.getConfig("cache")
+  val cacheTimeout = cacheConfig.getInt("cache-timeout")
+  val limboResurrectionTimeout = cacheConfig.getLong("limbo-resurrection-timeout")
+  val banishToValhalla = cacheConfig.getBoolean("banish-to-valhalla")
 
   //  override def supervisorStrategy: SupervisorStrategy = OneForOneStrategy() {
   //    {
@@ -89,7 +90,7 @@ class ClientCachingActor(config: Config)(implicit db: Database)
           log.debug(s"active targets in database:\n ${iterableIdsPrettyFormat(bars.map(_.id.get))}")
           log.debug(s"active targets in cache:\n ${iterableIdsPrettyFormat(cachedTargetsReadyForRefresh)}")
           targetsReadyForRefresh.foreach(target =>
-            context.actorOf(Props(new ClientHttpActor(config))) ! GetTarget(
+            context.actorOf(Props(new ClientHttpActor)) ! GetTarget(
               target.id.get, target.infoSource))
         })
 
@@ -125,5 +126,13 @@ class ClientCachingActor(config: Config)(implicit db: Database)
 
     case um@_ =>
       log.info(s"received unexpected message:\n $um")
+  }
+
+  override def preStart = {
+    log.debug(s"actor ${self.path.name}, Father of all HttpActors is here")
+  }
+
+  override def postStop = {
+    log.debug(s"actor ${self.path.name} is dying")
   }
 }

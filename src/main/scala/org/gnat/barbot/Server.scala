@@ -1,11 +1,13 @@
-package org.gnat.barbot.http
+package org.gnat.barbot
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.stream.ActorMaterializer
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
-import org.gnat.barbot.http.ClientCachingActor.CachingActorStart
+import org.gnat.barbot.http._
+import org.gnat.barbot.http.ClientCachingActor._
+import org.gnat.barbot.tele.BarCrawlerBotActor
 
 import scala.io.StdIn
 
@@ -22,11 +24,12 @@ object Server extends App with ServerApiRouter with LazyLogging {
 
   val bindingFuture = Http().bindAndHandle(route, host, port)
 
-  val cacheConfig = ConfigFactory.load().getConfig("barbot.cache")
-  val client = system.actorOf(ClientCachingActor.props(cacheConfig), name = "client-caching-actor")
+  implicit val barbotConfig = ConfigFactory.load().getConfig("barbot")
+  val barCachingActor = system.actorOf(ClientCachingActor.props, name = "client-caching-actor")
+  val barBot = system.actorOf(BarCrawlerBotActor.props, name = "bar-crawler-bot-actor")
 
   initDatabase
-  client ! CachingActorStart
+  barCachingActor ! CachingActorStart
 
   logger.info("Started server, press enter to stop")
   StdIn.readLine()
