@@ -4,9 +4,10 @@ object BotAlphabet {
   val firstEncounter =
     s"""Hello, %s!
        |it is the first time we see each other.
-       |I hope I will be able to assist you
-       |in getting wasted today and many other days.
+       |hopefully I will be able to assist you in getting
+       |wasted today and on many other occasions.
     """
+
   val greetingForRegistered =
     s"""Hello, %s!
        |I am pleased to see you back!
@@ -14,7 +15,7 @@ object BotAlphabet {
 
   val helloReply = "ready so serve, my Lord!"
 
-  val userNotFound = "user is unknown"
+  val userNotFound = "user is unknown."
 
-  val commandNotFound = "command %s is not clear..."
+  val commandNotFound = "command %s is not clear to me!"
 }

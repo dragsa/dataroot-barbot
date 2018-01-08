@@ -57,7 +57,8 @@ trait ServerApiRouter extends Database with ServerJsonSupport {
         }
       }
     } ~ pathPrefix("update") {
-      // TODO add name update
+      // TODO
+      // add name update
       pathEndOrSingleSlash {
         post {
           handleRejections(barMaintenanceApiRejectionHandler) {
@@ -78,5 +79,6 @@ trait ServerApiRouter extends Database with ServerJsonSupport {
         }
       }
     }
-  // TODO status endpoint via GET and id parameter validation
+  // TODO
+  // status endpoint via GET and id parameter validation
 }

@@ -82,16 +82,8 @@ class BotDispatcherActor(implicit config: Config) extends TelegramBot with Polli
   }
 
   // messages effect depends session state in which those are executed
-  // also unknown commands are filtered in this handler
+  // also unknown commands are signaled to user in this handler
   onMessage { implicit msg =>
-    //    msg.from.map(_.id.toString).foreach { userId =>
-    //      val userActor = context
-    //        .child(userId)
-    //        .getOrElse(
-    //          context.actorOf(UserActor.props(userId), userId)
-    //        )
-    //      userActor ! UserMessage(msg.text.getOrElse(":)"))
-    //    }
     logger.info(s"got message from API:\n $msg")
     msg.entities.flatMap(entities =>
       entities.find(entity =>
@@ -122,6 +114,6 @@ class BotDispatcherActor(implicit config: Config) extends TelegramBot with Polli
   }
 
   override def receive: Receive = {
-    case a => log.debug(s"actor ${self.path.name} received message\n $a")
+    case a => log.debug(s"actor ${self.path.name} received message:\n $a")
   }
 }
