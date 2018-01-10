@@ -1,13 +1,15 @@
 package org.gnat.barbot.tele
 
-import akka.actor.{Actor, ActorLogging, PoisonPill, Props}
+import akka.actor.{Actor, ActorLogging, PoisonPill, Props, Terminated}
 import com.typesafe.config.Config
 import info.mukel.telegrambot4s.api.declarative.{Commands, Help}
 import info.mukel.telegrambot4s.api.{Polling, TelegramBot}
-import info.mukel.telegrambot4s.models.MessageEntityType
+import info.mukel.telegrambot4s.models.{Message, MessageEntityType}
 import org.gnat.barbot.Database
 import org.gnat.barbot.models.User
 import org.gnat.barbot.tele.BotAlphabet._
+import org.gnat.barbot.tele.BotDispatcherActor.SessionNotStarted
+import org.gnat.barbot.tele.BotUserActor._
 
 import scala.io.Source
 import scala.util.Success
@@ -15,13 +17,20 @@ import scala.util.Success
 object BotDispatcherActor {
 
   object BarCrawlerBotCommands extends Enumeration {
-    val help = Value("/help")
+
     val start = Value("/start")
+    val stop = Value("/stop")
+    val reset = Value("/reset")
+    val suggest = Value("/suggest")
+
+    val help = Value("/help")
     val hello = Value("/hello")
     val history = Value("/history")
-    val suggest = Value("/suggest")
-    val stop = Value("/stop")
   }
+
+  trait DispatcherReply
+  case class SessionNotStarted(str: String, msg: Message) extends DispatcherReply
+  case class Greeting(str: String, msg: Message) extends DispatcherReply
 
   def commands = BarCrawlerBotCommands.values.map(_.toString).toList
 
@@ -46,6 +55,8 @@ class BotDispatcherActor(implicit config: Config, db: Database) extends Telegram
 
   val botConfig = config.getConfig("bot")
 
+  override def pollingInterval = botConfig.getInt("polling-interval")
+
   import BotDispatcherActor.commands
 
   // commands may:
@@ -63,7 +74,7 @@ class BotDispatcherActor(implicit config: Config, db: Database) extends Telegram
         val userName = getUserFullName(msg)
         val compositeUserActorName = getCompositeUserActorName(msg)
         context.child(compositeUserActorName).getOrElse {
-          logger.info(s"spawning child actor: $compositeUserActorName")
+          log.info(s"spawning child actor: $compositeUserActorName")
           // create user if this is first encounter
           db.userRepository.getOneById(id).flatMap {
             case Some(_) => reply(String.format(greetingForRegistered, userName).stripMargin)
@@ -72,8 +83,8 @@ class BotDispatcherActor(implicit config: Config, db: Database) extends Telegram
                 firstName = getUserFirstName(msg),
                 lastName = getUserLastName(msg),
                 id = getUserId(msg).get
-              )).andThen { case Success(u) => logger.info(s"user $u was created") }
-              reply(String.format(greetingsForFirstEncounter, userName).stripMargin)
+              )).andThen { case Success(u) => log.info(s"user $u was created") }
+              reply(String.format(greetingForFirstEncounter, userName).stripMargin)
           }
           // TODO extract data and switch to case class passing here
           context.child(compositeUserActorName).getOrElse {
@@ -88,27 +99,41 @@ class BotDispatcherActor(implicit config: Config, db: Database) extends Telegram
 
   // close session completely, "/start" is required to init new one
   onCommandWithHelp("/stop")("kills user session") { implicit msg =>
-    context.child(getCompositeUserActorName(msg)).foreach {
-      logger.debug(s"/stop called for session ${getCompositeUserActorName(msg)}")
-      reply(String.format(goodbye, getUserFullName(msg)))
-      _ ! PoisonPill
+    context.child(getCompositeUserActorName(msg)) match {
+      case Some(child) =>
+        log.debug(s"/stop called for session ${getCompositeUserActorName(msg)}")
+        reply(String.format(goodbye, getUserFullName(msg)))
+        child ! PoisonPill
+      case None =>
+        log.debug(s"${getUserFullName(msg)}: session not started")
+        self ! SessionNotStarted(String.format(sessionNotStarted, getUserFullName(msg)), msg)
     }
   }
 
   // resets user session to initial state - like "/start" run
   onCommandWithHelp("/reset")("resets user session") { implicit msg =>
-    context.child(getCompositeUserActorName(msg)).foreach {
-      logger.debug(s"/reset called for session ${getCompositeUserActorName(msg)}")
-      reply(String.format(goodbye, getUserFullName(msg)))
-      // TODO extract data and switch to case class passing here
-      _ ! "Dummy"
+    context.child(getCompositeUserActorName(msg)) match {
+      case Some(child) =>
+        log.debug(s"/suggest called for session ${getCompositeUserActorName(msg)}")
+        child ! TriggerReset
+      //        reply(String.format(goodbye, getUserFullName(msg)))
+      case None =>
+        log.debug(s"${getUserFullName(msg)}: session not started")
+        reply(String.format(sessionNotStarted, getUserFullName(msg)))
     }
   }
 
   // starts interactive dialog with user
   onCommandWithHelp("/suggest")("starts dialog aiming to find today's bar") { implicit msg =>
-    // TODO
-    ???
+    context.child(getCompositeUserActorName(msg)) match {
+      case Some(child) =>
+        log.debug(s"/suggest called for session ${getCompositeUserActorName(msg)}")
+        child ! TriggerInit
+      //        reply(String.format(goodbye, getUserFullName(msg)))
+      case None =>
+        log.debug(s"${getUserFullName(msg)}: session not started")
+        reply(String.format(sessionNotStarted, getUserFullName(msg)))
+    }
   }
 
   // provide history of visits
@@ -125,7 +150,7 @@ class BotDispatcherActor(implicit config: Config, db: Database) extends Telegram
   // also unknown commands are signaled to user in this handler
 
   onMessage { implicit msg =>
-    logger.info(s"got message from API:\n $msg")
+    log.info(s"got message from API:\n $msg")
     msg.entities match {
       // stop and reply - unknown command
       case Some(entitiesList) =>
@@ -143,7 +168,7 @@ class BotDispatcherActor(implicit config: Config, db: Database) extends Telegram
         messageText <- msg.text
         actor <- context.child(getCompositeUserActorName(msg))
       } yield {
-        // TODO remove later
+        // TODO remove echo later
         reply(s"echo of message: ${msg.text.getOrElse("default text")}")
         actor ! messageText
       }
@@ -167,6 +192,8 @@ class BotDispatcherActor(implicit config: Config, db: Database) extends Telegram
   }
 
   override def receive: Receive = {
-    case a => log.debug(s"actor ${self.path.name} received message:\n $a")
+    case SessionNotStarted(text, msg) => reply(text)(msg)
+    case Terminated(child) => log.debug(s"user actor ${child.path.name} was terminated")
+    case um@_ => log.debug(s"actor ${self.path.name} received message:\n $um")
   }
 }

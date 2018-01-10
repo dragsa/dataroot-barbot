@@ -26,7 +26,7 @@ object Server extends App with ServerApiRouter with LazyLogging {
 
   implicit val barbotConfig = ConfigFactory.load().getConfig("barbot")
   val barCachingActor = system.actorOf(ClientCachingActor.props, name = "client-caching-actor")
-  val barCrawlerBotActor = system.actorOf(BotDispatcherActor.props, name = "bar-crawler-bot-actor")
+  val barCrawlerBotActor = system.actorOf(BotDispatcherActor.props, name = "bar-crawler-dispatcher-actor")
 
   initDatabase
 //  barCachingActor ! CachingActorStart

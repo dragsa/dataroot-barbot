@@ -1,7 +1,7 @@
 package org.gnat.barbot.tele
 
 object BotAlphabet {
-  val greetingsForFirstEncounter =
+  val greetingForFirstEncounter =
     s"""hello, %s!
        |it is the first time we see each other.
        |hopefully I will be able to assist you in getting
@@ -22,4 +22,8 @@ object BotAlphabet {
   val commandNotFound = "command %s is not clear to me!"
 
   val commandAccepted = "command %s is known and clear, executing..."
+
+  val sessionNotStarted = "dialog is not started, please run /start"
+
+//  val sessionNotStarted = "dialog is not started, please run /start"
 }
