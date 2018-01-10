@@ -52,12 +52,13 @@ object BotDispatcherActor {
     - bypass messages to child actors
     */
 
-// TODO the most painful TODO - move on top of WebHooks implementation as this one leads wo extremely unpleasant user's experience
+// TODO the most painful TODO - move on top of WebHooks implementation
+// as this one leads wo extremely unpleasant user's experience
 
 class BotDispatcherActor(implicit config: Config, db: Database) extends TelegramBot with Polling with Commands with Help with Actor with ActorLogging {
   lazy val token = scala.util.Properties
     .envOrNone("BOT_TOKEN")
-    .getOrElse(Source.fromResource("bot.token").getLines().mkString)
+    .getOrElse(Source.fromResource("bot.token").getLines.mkString)
 
   val botConfig = config.getConfig("bot")
 
@@ -76,70 +77,79 @@ class BotDispatcherActor(implicit config: Config, db: Database) extends Telegram
 
   // start session, executed by remote Telegram participant upon click on Start, leads to initial state
   onCommandWithHelp("/start")("starts user session") { implicit msg =>
-    val compositeUserActorName = getCompositeUserActorName(msg)
-    getUserId(msg) match {
+    val compositeUserActorName = getCompositeUserActorName
+    getUserId match {
       case Some(id) =>
-        val userName = getUserFullName(msg)
-        context.child(compositeUserActorName).getOrElse {
+        val userName = getUserFullName
+        context.child(compositeUserActorName).flatMap { child =>
+          reply(String.format(sessionAlreadyExists, userName).stripMargin)
+          Some(child)
+        }.orElse {
           log.info(s"spawning child actor: $compositeUserActorName")
-          // create user if this is first encounter
+          // check and create user if this is first encounter
           db.userRepository.getOneById(id).flatMap {
+            // enforce order here
             case Some(_) => reply(String.format(greetingForRegistered, userName).stripMargin)
+              .andThen { case Success(_) => reply(String.format(sessionStart, userName).stripMargin) }
             case None =>
-              db.userRepository.createOne(User(nickName = getUserNickName(msg),
-                firstName = getUserFirstName(msg),
-                lastName = getUserLastName(msg),
-                id = getUserId(msg).get
+              db.userRepository.createOne(User(nickName = getUserNickName,
+                firstName = getUserFirstName,
+                lastName = getUserLastName,
+                id = getUserId.get
               )).andThen { case Success(u) => log.info(s"user $u was created") }
+              // enforce order here
               reply(String.format(greetingForFirstEncounter, userName).stripMargin)
+                .andThen { case Success(_) => reply(String.format(sessionStart, userName).stripMargin) }
           }
-          context.watch(context.actorOf(BotUserActor.props(compositeUserActorName), compositeUserActorName))
-//          Some(childActor)
+          // watch fo it
+          Option(context.watch(context.actorOf(BotUserActor.props(compositeUserActorName), compositeUserActorName)))
         }
+      // TODO well... we can send something, but do we really need?
+      //    }.foreach(_ ! StateIdle)
       case None => reply(userNotFound)
     }
   }
 
   // close session completely, "/start" is required to init new one
   onCommandWithHelp("/stop")("kills user session") { implicit msg =>
-    val compositeUserActorName = getCompositeUserActorName(msg)
+    val compositeUserActorName = getCompositeUserActorName
     context.child(compositeUserActorName) match {
       case Some(child) =>
         log.debug(s"/stop called for session $compositeUserActorName")
         child ! PoisonPill
-        reply(String.format(goodbye, getUserFullName(msg)))
-      case None => sessionNotStartedHandler
-      //        self ! SessionNotStarted(String.format(sessionNotStarted, getUserFullName(msg)), msg)
+        reply(String.format(sessionStop, getUserFullName))
+      case None => decisionDialogNotStartedHandler
+      // self ! SessionNotStarted(String.format(sessionNotStarted, getUserFullName(msg)), msg)
     }
   }
 
   // reset user session to initial state - like calling "/start"
   onCommandWithHelp("/reset")("resets user session") { implicit msg =>
-    val compositeUserActorName = getCompositeUserActorName(msg)
+    val compositeUserActorName = getCompositeUserActorName
     context.child(compositeUserActorName) match {
       case Some(child) =>
         log.debug(s"/suggest called for session $compositeUserActorName")
         child ! TriggerResetDecision
-        reply(String.format(greetingForRegistered, getUserFullName(msg)).stripMargin)
-      case None => sessionNotStartedHandler
+        reply(String.format(sessionStart, getUserFullName).stripMargin)
+      case None => decisionDialogNotStartedHandler
     }
   }
 
   // starts interactive dialog with user
   onCommandWithHelp("/suggest")("starts dialog aiming to find today's bar") { implicit msg =>
-    val compositeUserActorName = getCompositeUserActorName(msg)
+    val compositeUserActorName = getCompositeUserActorName
     context.child(compositeUserActorName) match {
       case Some(child) =>
         log.debug(s"/suggest called for session $compositeUserActorName")
         child ! TriggerInitDecision
-        reply(String.format(sessionStarted, getUserFirstName(msg)).stripMargin)
-      case None => sessionNotStartedHandler
+        reply(String.format(decisionDialogStarted, getUserFirstName).stripMargin)
+      case None => decisionDialogNotStartedHandler
     }
   }
 
-  private def sessionNotStartedHandler(implicit msg: Message) = {
-    log.debug(s"${getUserFullName(msg)}: session not started")
-    reply(String.format(sessionNotStarted, getUserFullName(msg)))
+  private def decisionDialogNotStartedHandler(implicit msg: Message) = {
+    log.debug(s"${getUserFullName}: decision dialog not started")
+    reply(String.format(decisionDialogNotStarted, getUserFullName))
   }
 
   // provide history of visits
@@ -163,16 +173,16 @@ class BotDispatcherActor(implicit config: Config, db: Database) extends Telegram
         entitiesList.find(entity =>
           entity.`type`.equals(MessageEntityType.BotCommand) && !msg.text.exists(commandName => commands.contains(commandName))) match {
           case Some(_) =>
-            log.debug(s"${getUserFullName(msg)}: command ${msg.text.getOrElse("")} doesn't exist")
+            log.debug(s"${getUserFullName}: command ${msg.text.getOrElse("")} doesn't exist")
             reply(String.format(commandNotAccepted, msg.text.getOrElse("")))
           case None =>
-            log.debug(s"${getUserFullName(msg)}: entity ${msg.text.getOrElse("")} is known!")
+            log.debug(s"${getUserFullName}: entity ${msg.text.getOrElse("")} is known!")
             reply(String.format(commandAccepted, msg.text.getOrElse("")))
         }
       // proceed - plain text message
       case None => for {
         messageText <- msg.text
-        actor <- context.child(getCompositeUserActorName(msg))
+        actor <- context.child(getCompositeUserActorName)
       } yield {
         // TODO remove echo later
         reply(s"echo of message: ${msg.text.getOrElse("default text")}")
@@ -190,7 +200,7 @@ class BotDispatcherActor(implicit config: Config, db: Database) extends Telegram
 
   override def preStart = {
     log.debug(s"actor ${self.path.name}, Father of all Bot User Actors is here")
-    run()
+    run
   }
 
   override def postStop = {

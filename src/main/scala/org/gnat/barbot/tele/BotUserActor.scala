@@ -10,8 +10,6 @@ object BotUserActor {
   sealed trait Trigger
   case object TriggerInitDecision extends Trigger
   case object TriggerResetDecision extends Trigger
-//  case object UserActorTriggerStop extends UserActorTrigger
-//  case object UserActorTriggerSuggest extends UserActorTrigger
 
   sealed trait State
   case object StateIdle extends State
