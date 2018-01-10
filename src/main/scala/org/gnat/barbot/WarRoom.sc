@@ -12,4 +12,4 @@ val firstEncounter =
 String.format(firstEncounter, "TEST")
 'test
 
-
+"Andrii Gnatiuk".replaceAll("\\s", "")

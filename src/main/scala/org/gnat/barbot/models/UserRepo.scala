@@ -7,40 +7,39 @@ import slick.lifted.Tag
 
 import scala.concurrent.Future
 
-//  case class User(firstName: String,
-//                  lastName: String,
-//                  birthDate: Timestamp,
-//                  gender: String,
-//                  phone: String,
-//                  email: String,
-//                  favoriteDrink: Option[String],
-//                  favoriteMeal: Option[String],
-//                  id: Int)
+//case class User(nickName: Option[String],
+//                firstName: String,
+//                lastName: Option[String],
+//                gender: Option[String] = None,
+//                phone: Option[String] = None,
+//                email: Option[String] = None,
+//                favoriteDrink: Option[String] = None,
+//                favoriteMeal: Option[String] = None,
+//                id: Int)
 
 class UserTable(tag: Tag) extends Table[User](tag, "users") {
 
-  def nickName = column[String]("nick_name", O.Unique, O.Length(100))
+  // TODO well, unique and null... should be OK according to Postgres view
+  def nickName = column[Option[String]]("nick_name", O.Unique, O.Length(100))
 
   def firstName = column[String]("first_name", O.Length(50))
 
-  def lastName = column[String]("last_name", O.Length(50))
+  def lastName = column[Option[String]]("last_name", O.Length(50))
 
-  def birthDate = column[Timestamp]("birth_date")
+  def gender = column[Option[String]]("gender", O.Length(1))
 
-  def gender = column[String]("gender", O.Length(1))
+  def phone = column[Option[String]]("phone", O.Unique, O.Length(50))
 
-  def phone = column[String]("phone", O.Unique, O.Length(50))
+  def email = column[Option[String]]("email", O.Unique, O.Length(100))
 
-  def email = column[String]("email", O.Unique, O.Length(100))
+  def favoriteDrink = column[Option[String]]("fav_drink", O.Length(50))
 
-  def favoriteDrink = column[String]("fav_drink", O.Length(50))
+  def favoriteMeal = column[Option[String]]("fav_meal", O.Length(50))
 
-  def favoriteMeal = column[String]("fav_meal", O.Length(50))
-
-  def id = column[Int]("id", O.PrimaryKey, O.Unique, O.AutoInc)
+  def id = column[Int]("id", O.PrimaryKey, O.Unique)
 
   def * =
-    (nickName, firstName.?, lastName.?, birthDate, gender, phone, email, favoriteDrink.?, favoriteMeal.?, id) <> (User.apply _ tupled, User.unapply)
+    (nickName, firstName, lastName, gender, phone, email, favoriteDrink, favoriteMeal, id) <> (User.apply _ tupled, User.unapply)
 
 }
 

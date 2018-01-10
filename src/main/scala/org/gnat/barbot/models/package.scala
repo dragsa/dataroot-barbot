@@ -5,15 +5,14 @@ import java.sql.Timestamp
 
 package object models {
 
-  case class User(nickName: String,
-                  firstName: Option[String],
+  case class User(nickName: Option[String],
+                  firstName: String,
                   lastName: Option[String],
-                  birthDate: Timestamp,
-                  gender: String,
-                  phone: String,
-                  email: String,
-                  favoriteDrink: Option[String],
-                  favoriteMeal: Option[String],
+                  gender: Option[String] = None,
+                  phone: Option[String] = None,
+                  email: Option[String] = None,
+                  favoriteDrink: Option[String] = None,
+                  favoriteMeal: Option[String] = None,
                   id: Int)
 
   case class Bar(name: String,

@@ -1,7 +1,7 @@
 package org.gnat.barbot.tele
 
 object BotAlphabet {
-  val firstEncounter =
+  val greetingsForfirstEncounter =
     s"""Hello, %s!
        |it is the first time we see each other.
        |hopefully I will be able to assist you in getting
@@ -18,4 +18,6 @@ object BotAlphabet {
   val userNotFound = "user is unknown."
 
   val commandNotFound = "command %s is not clear to me!"
+
+  val commandAccepted = "command %s is known and clear, executing..."
 }

@@ -130,7 +130,7 @@ class ClientCachingActor(implicit config: Config, db: Database)
   }
 
   override def preStart = {
-    log.debug(s"actor ${self.path.name}, Father of all HttpActors is here")
+    log.debug(s"actor ${self.path.name}, Father of all Http Actors is here")
   }
 
   override def postStop = {

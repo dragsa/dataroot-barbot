@@ -28,7 +28,7 @@ object Server extends App with ServerApiRouter with LazyLogging {
   val barCachingActor = system.actorOf(ClientCachingActor.props, name = "client-caching-actor")
   val barCrawlerBotActor = system.actorOf(BotDispatcherActor.props, name = "bar-crawler-bot-actor")
 
-//  initDatabase
+  initDatabase
 //  barCachingActor ! CachingActorStart
 
   logger.info("Started server, press enter to stop")
