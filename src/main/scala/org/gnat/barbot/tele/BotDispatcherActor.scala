@@ -8,7 +8,6 @@ import info.mukel.telegrambot4s.models.{Message, MessageEntityType}
 import org.gnat.barbot.Database
 import org.gnat.barbot.models.User
 import org.gnat.barbot.tele.BotAlphabet._
-import org.gnat.barbot.tele.BotDispatcherActor.SessionNotStarted
 import org.gnat.barbot.tele.BotUserActor._
 
 import scala.io.Source
@@ -18,19 +17,26 @@ object BotDispatcherActor {
 
   object BarCrawlerBotCommands extends Enumeration {
 
+    // TODO add removal of user from bot dialog
+
+    // stateful
     val start = Value("/start")
     val stop = Value("/stop")
     val reset = Value("/reset")
     val suggest = Value("/suggest")
 
+    // stateless
     val help = Value("/help")
     val hello = Value("/hello")
     val history = Value("/history")
   }
 
-  trait DispatcherReply
-  case class SessionNotStarted(str: String, msg: Message) extends DispatcherReply
-  case class Greeting(str: String, msg: Message) extends DispatcherReply
+  // TODO sending messages to self and then reply doesn't seem to help with delays at all
+  //  trait DispatcherReply
+  //
+  //  case class SessionNotStarted(str: String, msg: Message) extends DispatcherReply
+  //
+  //  case class Greeting(str: String, msg: Message) extends DispatcherReply
 
   def commands = BarCrawlerBotCommands.values.map(_.toString).toList
 
@@ -46,7 +52,7 @@ object BotDispatcherActor {
     - bypass messages to child actors
     */
 
-// TODO the most painful TODO - move on top of WebHooks implementaion as this one leads wo extremely unpleasant user's experience
+// TODO the most painful TODO - move on top of WebHooks implementation as this one leads wo extremely unpleasant user's experience
 
 class BotDispatcherActor(implicit config: Config, db: Database) extends TelegramBot with Polling with Commands with Help with Actor with ActorLogging {
   lazy val token = scala.util.Properties
@@ -55,6 +61,7 @@ class BotDispatcherActor(implicit config: Config, db: Database) extends Telegram
 
   val botConfig = config.getConfig("bot")
 
+  // TODO kind of temp hack, allowing smooth user experience
   override def pollingInterval = botConfig.getInt("polling-interval")
 
   import BotDispatcherActor.commands
@@ -69,10 +76,10 @@ class BotDispatcherActor(implicit config: Config, db: Database) extends Telegram
 
   // start session, executed by remote Telegram participant upon click on Start, leads to initial state
   onCommandWithHelp("/start")("starts user session") { implicit msg =>
+    val compositeUserActorName = getCompositeUserActorName(msg)
     getUserId(msg) match {
       case Some(id) =>
         val userName = getUserFullName(msg)
-        val compositeUserActorName = getCompositeUserActorName(msg)
         context.child(compositeUserActorName).getOrElse {
           log.info(s"spawning child actor: $compositeUserActorName")
           // create user if this is first encounter
@@ -86,12 +93,8 @@ class BotDispatcherActor(implicit config: Config, db: Database) extends Telegram
               )).andThen { case Success(u) => log.info(s"user $u was created") }
               reply(String.format(greetingForFirstEncounter, userName).stripMargin)
           }
-          // TODO extract data and switch to case class passing here
-          context.child(compositeUserActorName).getOrElse {
-            val childActor = context.actorOf(BotUserActor.props(compositeUserActorName), compositeUserActorName)
-            context.watch(childActor)
-            childActor
-          } ! msg
+          context.watch(context.actorOf(BotUserActor.props(compositeUserActorName), compositeUserActorName))
+//          Some(childActor)
         }
       case None => reply(userNotFound)
     }
@@ -99,41 +102,44 @@ class BotDispatcherActor(implicit config: Config, db: Database) extends Telegram
 
   // close session completely, "/start" is required to init new one
   onCommandWithHelp("/stop")("kills user session") { implicit msg =>
-    context.child(getCompositeUserActorName(msg)) match {
+    val compositeUserActorName = getCompositeUserActorName(msg)
+    context.child(compositeUserActorName) match {
       case Some(child) =>
-        log.debug(s"/stop called for session ${getCompositeUserActorName(msg)}")
-        reply(String.format(goodbye, getUserFullName(msg)))
+        log.debug(s"/stop called for session $compositeUserActorName")
         child ! PoisonPill
-      case None =>
-        log.debug(s"${getUserFullName(msg)}: session not started")
-        self ! SessionNotStarted(String.format(sessionNotStarted, getUserFullName(msg)), msg)
+        reply(String.format(goodbye, getUserFullName(msg)))
+      case None => sessionNotStartedHandler
+      //        self ! SessionNotStarted(String.format(sessionNotStarted, getUserFullName(msg)), msg)
     }
   }
 
-  // resets user session to initial state - like "/start" run
+  // reset user session to initial state - like calling "/start"
   onCommandWithHelp("/reset")("resets user session") { implicit msg =>
-    context.child(getCompositeUserActorName(msg)) match {
+    val compositeUserActorName = getCompositeUserActorName(msg)
+    context.child(compositeUserActorName) match {
       case Some(child) =>
-        log.debug(s"/suggest called for session ${getCompositeUserActorName(msg)}")
-        child ! TriggerReset
-      //        reply(String.format(goodbye, getUserFullName(msg)))
-      case None =>
-        log.debug(s"${getUserFullName(msg)}: session not started")
-        reply(String.format(sessionNotStarted, getUserFullName(msg)))
+        log.debug(s"/suggest called for session $compositeUserActorName")
+        child ! TriggerResetDecision
+        reply(String.format(greetingForRegistered, getUserFullName(msg)).stripMargin)
+      case None => sessionNotStartedHandler
     }
   }
 
   // starts interactive dialog with user
   onCommandWithHelp("/suggest")("starts dialog aiming to find today's bar") { implicit msg =>
-    context.child(getCompositeUserActorName(msg)) match {
+    val compositeUserActorName = getCompositeUserActorName(msg)
+    context.child(compositeUserActorName) match {
       case Some(child) =>
-        log.debug(s"/suggest called for session ${getCompositeUserActorName(msg)}")
-        child ! TriggerInit
-      //        reply(String.format(goodbye, getUserFullName(msg)))
-      case None =>
-        log.debug(s"${getUserFullName(msg)}: session not started")
-        reply(String.format(sessionNotStarted, getUserFullName(msg)))
+        log.debug(s"/suggest called for session $compositeUserActorName")
+        child ! TriggerInitDecision
+        reply(String.format(sessionStarted, getUserFirstName(msg)).stripMargin)
+      case None => sessionNotStartedHandler
     }
+  }
+
+  private def sessionNotStartedHandler(implicit msg: Message) = {
+    log.debug(s"${getUserFullName(msg)}: session not started")
+    reply(String.format(sessionNotStarted, getUserFullName(msg)))
   }
 
   // provide history of visits
@@ -152,13 +158,13 @@ class BotDispatcherActor(implicit config: Config, db: Database) extends Telegram
   onMessage { implicit msg =>
     log.info(s"got message from API:\n $msg")
     msg.entities match {
-      // stop and reply - unknown command
+      // inform user if command is known on server side
       case Some(entitiesList) =>
         entitiesList.find(entity =>
           entity.`type`.equals(MessageEntityType.BotCommand) && !msg.text.exists(commandName => commands.contains(commandName))) match {
           case Some(_) =>
             log.debug(s"${getUserFullName(msg)}: command ${msg.text.getOrElse("")} doesn't exist")
-            reply(String.format(commandNotFound, msg.text.getOrElse("")))
+            reply(String.format(commandNotAccepted, msg.text.getOrElse("")))
           case None =>
             log.debug(s"${getUserFullName(msg)}: entity ${msg.text.getOrElse("")} is known!")
             reply(String.format(commandAccepted, msg.text.getOrElse("")))
@@ -192,7 +198,7 @@ class BotDispatcherActor(implicit config: Config, db: Database) extends Telegram
   }
 
   override def receive: Receive = {
-    case SessionNotStarted(text, msg) => reply(text)(msg)
+    //    case SessionNotStarted(text, msg) => reply(text)(msg)
     case Terminated(child) => log.debug(s"user actor ${child.path.name} was terminated")
     case um@_ => log.debug(s"actor ${self.path.name} received message:\n $um")
   }

@@ -8,8 +8,8 @@ import org.gnat.barbot.tele.BotUserActor._
 object BotUserActor {
 
   sealed trait Trigger
-  case object TriggerInit extends Trigger
-  case object TriggerReset extends Trigger
+  case object TriggerInitDecision extends Trigger
+  case object TriggerResetDecision extends Trigger
 //  case object UserActorTriggerStop extends UserActorTrigger
 //  case object UserActorTriggerSuggest extends UserActorTrigger
 
@@ -35,15 +35,21 @@ class BotUserActor(userIr: String)(implicit config: Config) extends FSM[State, D
   startWith(StateIdle, DataEmpty)
 
   when(StateIdle) {
-    case Event(TriggerInit, DataEmpty) =>
+    case Event(TriggerInitDecision, DataEmpty) =>
       goto(StateDecision) using DataEmpty
   }
 
-  when(StateDecision)(FSM.NullFunction)
+  when(StateDecision) {
+    case Event(TriggerResetDecision, DataEmpty) =>
+      goto(StateIdle) using DataEmpty
+  }
 
   onTransition {
-    case stateChange@(StateIdle -> StateDecision) =>
-      log.info(s"I am ${self.path.name} and my state is changing ${stateChange._1 -> stateChange._2}")
+//    case stateChange@(StateIdle -> StateDecision) =>
+//      log.info(s"I am ${self.path.name} and my state is changing ${stateChange._1 -> stateChange._2}")
+    case stateChange =>
+      log.info(s"I am ${self.path.name} and my state is changing ${stateChange._1 + " -> " + stateChange._2}")
+
   }
 
   override def preStart = {

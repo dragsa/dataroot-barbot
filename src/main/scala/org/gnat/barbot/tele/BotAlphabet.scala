@@ -19,11 +19,16 @@ object BotAlphabet {
 
   val userNotFound = "user is unknown."
 
-  val commandNotFound = "command %s is not clear to me!"
+  val commandNotAccepted = "command %s is not clear to me! please check /help details"
 
   val commandAccepted = "command %s is known and clear, executing..."
 
-  val sessionNotStarted = "dialog is not started, please run /start"
+  val sessionNotStarted = "session is not started, please run /start"
 
-//  val sessionNotStarted = "dialog is not started, please run /start"
+  val sessionStarted =
+    s"""hey, %s!
+       |make a choice of questionnaire length:
+       |1 - short, fast but less accurate
+       |2 - painful, slow but precise
+    """
 }
