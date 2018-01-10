@@ -43,10 +43,4 @@ package object http {
       "wine",
       "cuisine")
   }
-
-  //  TODO possibly another way to do unmarshalling below?
-  //  object ClientJsonSupport extends SprayJsonSupport with DefaultJsonProtocol {
-  //    implicit val barStateFormat = jsonFormat7(BarStateMessage)
-  //  }
-
 }

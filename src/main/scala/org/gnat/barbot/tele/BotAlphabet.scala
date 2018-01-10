@@ -1,19 +1,21 @@
 package org.gnat.barbot.tele
 
 object BotAlphabet {
-  val greetingsForfirstEncounter =
-    s"""Hello, %s!
+  val greetingsForFirstEncounter =
+    s"""hello, %s!
        |it is the first time we see each other.
        |hopefully I will be able to assist you in getting
        |wasted today and on many other occasions.
     """
 
   val greetingForRegistered =
-    s"""Hello, %s!
+    s"""hello, %s!
        |I am pleased to see you back!
     """
 
   val helloReply = "ready so serve, my Lord!"
+
+  val goodbye = "goodbye, %s!"
 
   val userNotFound = "user is unknown."
 

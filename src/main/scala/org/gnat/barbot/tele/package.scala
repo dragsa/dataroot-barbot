@@ -7,11 +7,11 @@ package object tele {
 
   def getUserId(msg: Message) = msg.from.flatMap(u => Option(u.id))
 
-  def getUserFirstName(msg: Message) = msg.from.flatMap(u => Option(u.firstName))
+  def getUserFirstName(msg: Message) = msg.from.flatMap(u => Option(u.firstName)).getOrElse("Anonymous")
 
   def getUserLastName(msg: Message) = msg.from.flatMap(u => u.lastName)
 
   def getUserNickName(msg: Message) = msg.from.flatMap(u => u.username)
 
-  def getCompositeUserActorName(msg : Message) = getUserId(msg).get + "_for_" + getUserFullName(msg).replaceAll("\\s", "")
+  def getCompositeUserActorName(msg: Message) = getUserId(msg).getOrElse("default_user_id") + "_for_" + getUserFullName(msg).replaceAll("\\s", "")
 }

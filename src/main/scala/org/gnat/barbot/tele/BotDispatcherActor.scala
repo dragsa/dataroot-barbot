@@ -1,8 +1,8 @@
 package org.gnat.barbot.tele
 
-import akka.actor.{Actor, ActorLogging, Props}
+import akka.actor.{Actor, ActorLogging, PoisonPill, Props}
 import com.typesafe.config.Config
-import info.mukel.telegrambot4s.api.declarative.Commands
+import info.mukel.telegrambot4s.api.declarative.{Commands, Help}
 import info.mukel.telegrambot4s.api.{Polling, TelegramBot}
 import info.mukel.telegrambot4s.models.MessageEntityType
 import org.gnat.barbot.Database
@@ -15,6 +15,7 @@ import scala.util.Success
 object BotDispatcherActor {
 
   object BarCrawlerBotCommands extends Enumeration {
+    val help = Value("/help")
     val start = Value("/start")
     val hello = Value("/hello")
     val history = Value("/history")
@@ -36,53 +37,77 @@ object BotDispatcherActor {
     - bypass messages to child actors
     */
 
-class BotDispatcherActor(implicit config: Config, db: Database) extends TelegramBot with Polling with Commands with Actor with ActorLogging {
+// TODO the most painful TODO - move on top of WebHooks implementaion as this one leads wo extremely unpleasant user's experience
+
+class BotDispatcherActor(implicit config: Config, db: Database) extends TelegramBot with Polling with Commands with Help with Actor with ActorLogging {
   lazy val token = scala.util.Properties
     .envOrNone("BOT_TOKEN")
     .getOrElse(Source.fromResource("bot.token").getLines().mkString)
 
   val botConfig = config.getConfig("bot")
 
+  import BotDispatcherActor.commands
+
   // commands may:
   // - impact state of session
   // - provide "static" info which is not dependent on session state
 
-  // keep-alive command
-  onCommand("/hello") { implicit msg =>
+  onCommandWithHelp("/hello")("keep-alive command") { implicit msg =>
     reply(helloReply)
   }
 
-  // start session, executed by another Telegram endpoint, leads to initial state
-  onCommand("/start") { implicit msg =>
+  // start session, executed by remote Telegram participant upon click on Start, leads to initial state
+  onCommandWithHelp("/start")("starts user session") { implicit msg =>
     getUserId(msg) match {
       case Some(id) =>
         val userName = getUserFullName(msg)
         val compositeUserActorName = getCompositeUserActorName(msg)
         context.child(compositeUserActorName).getOrElse {
           logger.info(s"spawning child actor: $compositeUserActorName")
+          // create user if this is first encounter
           db.userRepository.getOneById(id).flatMap {
             case Some(_) => reply(String.format(greetingForRegistered, userName).stripMargin)
             case None =>
               db.userRepository.createOne(User(nickName = getUserNickName(msg),
-                firstName = getUserFirstName(msg).get,
+                firstName = getUserFirstName(msg),
                 lastName = getUserLastName(msg),
                 id = getUserId(msg).get
               )).andThen { case Success(u) => logger.info(s"user $u was created") }
-              reply(String.format(greetingsForfirstEncounter, userName).stripMargin)
+              reply(String.format(greetingsForFirstEncounter, userName).stripMargin)
           }
-          context.actorOf(BotUserActor.props(compositeUserActorName), compositeUserActorName) ! msg
+          // TODO extract data and switch to case class passing here
+          context.child(compositeUserActorName).getOrElse {
+            val childActor = context.actorOf(BotUserActor.props(compositeUserActorName), compositeUserActorName)
+            context.watch(childActor)
+            childActor
+          } ! msg
         }
       case None => reply(userNotFound)
     }
   }
 
-  // starts interactive dialog with user
-  onCommand("/suggest") { implicit msg =>
-    ???
+  // close session completely, "/start" is required to init new one
+  onCommandWithHelp("/stop")("kills user session") { implicit msg =>
+    context.child(getCompositeUserActorName(msg)).foreach {
+      logger.debug(s"/stop called for session ${getCompositeUserActorName(msg)}")
+      reply(String.format(goodbye, getUserFullName(msg)))
+      _ ! PoisonPill
+    }
   }
 
-  // reset session state from any other to initial
-  onCommand("/stop") { implicit msg =>
+  // resets user session to initial state - like "/start" run
+  onCommandWithHelp("/reset")("resets user session") { implicit msg =>
+    context.child(getCompositeUserActorName(msg)).foreach {
+      logger.debug(s"/reset called for session ${getCompositeUserActorName(msg)}")
+      reply(String.format(goodbye, getUserFullName(msg)))
+      // TODO extract data and switch to case class passing here
+      _ ! "Dummy"
+    }
+  }
+
+  // starts interactive dialog with user
+  onCommandWithHelp("/suggest")("starts dialog aiming to find today's bar") { implicit msg =>
+    // TODO
     ???
   }
 
@@ -91,13 +116,14 @@ class BotDispatcherActor(implicit config: Config, db: Database) extends Telegram
   // - how many records
   // - sorting by
   // - sorting order
-  onCommand("/history") { implicit msg =>
+  onCommandWithHelp("/history")("show history of visits for this user") { implicit msg =>
+    // TODO
     ???
   }
 
   // messages effect depends session state in which those are executed
   // also unknown commands are signaled to user in this handler
-  import BotDispatcherActor.commands
+
   onMessage { implicit msg =>
     logger.info(s"got message from API:\n $msg")
     msg.entities match {
