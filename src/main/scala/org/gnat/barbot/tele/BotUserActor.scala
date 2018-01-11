@@ -7,19 +7,19 @@ import org.gnat.barbot.Database
 import org.gnat.barbot.tele.BotAlphabet._
 import org.gnat.barbot.tele.BotUserActor._
 
-import scala.concurrent.ExecutionContext.Implicits.global
-
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
 
 object BotUserActor {
 
-  // incoming events
-  sealed trait Trigger
+  // incoming requests
+  sealed trait Request
 
-  case class TriggerInitDecision(msg: Message) extends Trigger
+  case class RequestInitSuggestion(msg: Message) extends Request
 
-  case object TriggerResetDecision extends Trigger
+  case class RequestResetSuggestion(msg: Message) extends Request
 
-  case class TriggerPayload(msg: Message) extends Trigger
+  case class RequestPayload(msg: Message) extends Request
 
   // states
   sealed trait State
@@ -33,14 +33,18 @@ object BotUserActor {
 
   case object DataEmpty extends Data
 
-  case class DataDialog(routineName: String, routineStep: Int, messageHistory: List[Message]) extends Data
+  case class DataDialog(routineName: String, routineStepsLeft: List[String], dialogHistory: List[Message]) extends Data
 
   // outgoing events
   sealed trait Event
 
   case class EventQuestion(text: String)(implicit val msg: Message) extends Event
 
-  case class EventRest(msg: Message) extends Event
+  case class EventError(text: String)(implicit val msg: Message) extends Event
+
+  case class EventQuestionEnd(text: String)(implicit val msg: Message) extends Event
+
+  case class EventReset(text: String)(implicit val msg: Message) extends Event
 
   def props(userId: String)(implicit config: Config, db: Database) = Props(new BotUserActor(userId))
 }
@@ -53,27 +57,37 @@ object BotUserActor {
 
 class BotUserActor(userId: String)(implicit config: Config, db: Database) extends FSM[State, Data] with ActorLogging {
 
-  def getFlows = db.flowRepository.getAll
+  // TODO removing blocking code
+  // not that flexible, but avoiding separate threads in replies to parent is mandatory
+  val actualFlows = Await.result(db.flowRepository.getAll, Duration.Inf)
 
   startWith(StateIdle, DataEmpty)
 
   when(StateIdle) {
-    case Event(TriggerInitDecision(msg), DataEmpty) => {
+    case Event(RequestInitSuggestion(msg), DataEmpty) =>
       implicit val msgRef = msg
-      //      messageHistory.push(msg)
-      for {flows <- getFlows} yield
-        context.parent ! EventQuestion((String.format(decisionDialogStarted, getUserFirstName) +
-          (flows.map(f => "|" + f.name + " -> " + f.description) mkString "\n")).stripMargin)
-      goto(StateDecision) using DataEmpty
-    }
+      goto(StateDecision) using DataEmpty replying {
+        EventQuestion((String.format(decisionDialogStarted, getUserFirstName) +
+          (actualFlows.map(f => "|" + f.name + " -> " + f.description) mkString "\n")).stripMargin)
+      }
   }
 
   when(StateDecision) {
-    case Event(TriggerResetDecision, _) =>
-      //      context.parent ! EventRest(messageHistory.pop)
-      goto(StateIdle) using DataEmpty
-    case Event(TriggerPayload(msg), DataEmpty) =>
-      goto(StateDecision) using DataDialog(msg.text.get, 0, msg :: List())
+    case Event(RequestResetSuggestion(msg), _) =>
+      implicit val msgRef = msg
+      goto(StateIdle) using DataEmpty replying EventReset("reset text")
+    case Event(RequestPayload(msg), DataEmpty) =>
+      implicit val msgRef = msg
+      // first step in dialog - flow choice should be made
+      if (actualFlows.map(_.name).contains(msg.text.get)) {
+        val flow = actualFlows.find(_.name == msg.text.get)
+        goto(StateDecision) using DataDialog(msg.text.get, flow.get.steps.split(",").toList, List()) replying EventQuestion(s"good choice!")
+      }
+      else
+        stay replying EventError(s"flow '${msg.text.get}' doesn't exists")
+//    case Event(RequestPayload(msg), DataDialog(flow, stepLeft, history)) =>
+//      implicit val msgRef = msg
+//      if
   }
 
   onTransition {

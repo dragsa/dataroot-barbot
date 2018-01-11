@@ -106,7 +106,6 @@ class BotDispatcherActor(implicit config: Config, db: Database) extends Telegram
                 .andThen { case Success(_) => reply(String.format(sessionStarted, userName).stripMargin) }
           }
           // watch fo it
-//          val dbRef = implicitly[Database]
           Option(context.watch(context.actorOf(BotUserActor.props(compositeUserActorName), compositeUserActorName)))
         }
       // TODO well... we can send something, but do we really need if FSM is in place?
@@ -135,8 +134,7 @@ class BotDispatcherActor(implicit config: Config, db: Database) extends Telegram
     context.child(compositeUserActorName) match {
       case Some(child) =>
         log.debug(s"/suggest called for session $compositeUserActorName")
-        child ! TriggerResetDecision
-        reply(String.format(sessionStarted, getUserFullName).stripMargin)
+        child ! RequestResetSuggestion(msg)
       case None => sessionNotStartedHandler
     }
   }
@@ -147,7 +145,7 @@ class BotDispatcherActor(implicit config: Config, db: Database) extends Telegram
     context.child(compositeUserActorName) match {
       case Some(child) =>
         log.debug(s"/suggest called for session $compositeUserActorName")
-        child ! TriggerInitDecision(msg)
+        child ! RequestInitSuggestion(msg)
       case None => sessionNotStartedHandler
     }
   }
@@ -158,12 +156,12 @@ class BotDispatcherActor(implicit config: Config, db: Database) extends Telegram
   }
 
   // provide history of visits
-  // TODO add parameters to control:
+  // TODO
+  // add parameters to control:
   // - how many records
   // - sorting by
   // - sorting order
   onCommandWithHelp("/history")("show history of visits for this user") { implicit msg =>
-    // TODO
     ???
   }
 
@@ -191,7 +189,7 @@ class BotDispatcherActor(implicit config: Config, db: Database) extends Telegram
       } yield {
         // TODO remove echo later
         reply(s"echo of message: ${msg.text.getOrElse("default text")}")
-        actor ! TriggerPayload(msg)
+        actor ! RequestPayload(msg)
       }
     }
   }
@@ -206,9 +204,10 @@ class BotDispatcherActor(implicit config: Config, db: Database) extends Telegram
   }
 
   override def receive: Receive = {
-    //    case SessionNotStarted(text, msg) => reply(text)(msg)
-    case eq@EventQuestion(text) => reply(text)(eq.msg)
+    case eQuestion@EventQuestion(text) => reply(text)(eQuestion.msg)
+    case eError@EventError(text) => reply(text)(eError.msg)
+    case eReset@EventReset(_) => reply(String.format(sessionStarted, getUserFullName(eReset.msg)).stripMargin)(eReset.msg)
     case Terminated(child) => log.debug(s"user actor ${child.path.name} was terminated")
-    case um@_ => log.debug(s"actor ${self.path.name} received message:\n $um")
+    case um@_ => log.debug(s"actor ${self.path.name} received unexpected message:\n $um")
   }
 }

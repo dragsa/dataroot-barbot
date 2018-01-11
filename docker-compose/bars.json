@@ -1,7 +1,7 @@
 {
   "PD1": {
-    "name": "Pivnaya Duma",
-    "location": "Spaska St, 5, Kyiv",
+    "name": "Pivnaya Duma 1",
+    "location": "close",
     "openHours": "11:00-23:30",
     "beer": [
       "light",
@@ -21,7 +21,7 @@
   },
   "Staromak": {
     "name": "Staromak",
-    "location": "Sychonih Strilciv St. 52",
+    "location": "far",
     "openHours": "13:00-03:00",
     "beer": [
       "light",
@@ -36,6 +36,18 @@
       "european",
       "czech",
       "jewish"
+    ]
+  }
+  "Vinsanto": {
+    "name": "Vinsanto",
+    "location": "middle",
+    "openHours": "13:00-03:00",
+    "wine": [
+      "red dry",
+      "white dry"
+    ],
+    "cuisine": [
+      "italian"
     ]
   },
   "Error": {

@@ -22,3 +22,4 @@ val decisionDialogStarted =
 val flows = List(("basic", "short, fast but less accurate"),
   ("full", "painful, slow but precise"))
 (String.format(decisionDialogStarted, "Andrii") + (flows.map(f => "|" + f._1 + " -> " + f._2) mkString "\n")).stripMargin
+flows.flatMap(_._2.split(","))
