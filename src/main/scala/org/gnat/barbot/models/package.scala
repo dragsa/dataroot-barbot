@@ -28,6 +28,7 @@ package object models {
 
   case class Flow(name: String,
                   steps: String,
-                  id: Int)
+                  description: String,
+                  id: Option[Int] = None)
 
 }

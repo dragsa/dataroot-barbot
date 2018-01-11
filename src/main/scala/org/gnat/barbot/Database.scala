@@ -16,14 +16,28 @@ trait Database extends LazyLogging {
   implicit val visitRepository = new VisitRepository
   implicit val flowRepository = new FlowRepository
 
-  val tables = Map("users" -> userRepository.userTableQuery,
+  private val tables = Map("users" -> userRepository.userTableQuery,
     "bars" -> barRepository.barTableQuery,
     "visits" -> visitRepository.visitTableQuery,
     "flows" -> flowRepository.flowTableQuery)
 
+  // TODO move flows into configuration file, sort of complex task
+  private val defaultFlows = List(Flow("basic", "location,openHours", "short, fast but less accurate"),
+    Flow("full", "location,openHours,beer,wine,cuisine", "painful, slow but precise"))
+
   // TODO add schema checking and migration code
   private def initTables: Unit = {
     tables.keys.foreach(tableCreator)
+  }
+
+  private def initFlows: Unit = {
+    defaultFlows.foreach(flowToCreate => Await.result(flowRepository.getOneByName(flowToCreate.name).flatMap {
+      case None =>
+        logger.info("creating flow " + flowToCreate.name)
+        flowRepository.createOne(flowToCreate)
+      case Some(_) =>
+        Future.successful()
+    }, Duration.Inf))
   }
 
   private def tableCreator(tableName: String): Unit = {
@@ -45,7 +59,7 @@ trait Database extends LazyLogging {
     // TODO add all of the below
     //    insertUsers
     //    insertBars
-    //    insertVisits
-    //    insertFlows
+    //        insertVisits
+    initFlows
   }
 }

@@ -21,9 +21,9 @@ object BotAlphabet {
 
   val commandAccepted = "command %s is known and clear, executing..."
 
-  val sessionStop = "goodbye, %s!"
+  val sessionStopped = "goodbye, %s!"
 
-  val sessionStart = "my dear %s, session was established, should I /suggest?"
+  val sessionStarted = "my dear %s, session was established, should I /suggest?"
 
   val sessionAlreadyExists = "my dear %s, session already exists, should I /suggest?"
 
@@ -32,7 +32,5 @@ object BotAlphabet {
   val decisionDialogStarted =
     s"""hey, %s!
        |make a choice of questionnaire length:
-       |1 - short, fast but less accurate
-       |2 - painful, slow but precise
     """
 }

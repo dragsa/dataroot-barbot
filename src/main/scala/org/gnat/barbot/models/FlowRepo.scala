@@ -7,6 +7,7 @@ import scala.concurrent.Future
 
 //case class Flow(name: String,
 //                steps: String,
+//                descriptions: String,
 //                id: Int)
 
 class FlowTable(tag: Tag) extends Table[Flow](tag, "flows") {
@@ -14,10 +15,12 @@ class FlowTable(tag: Tag) extends Table[Flow](tag, "flows") {
 
   def steps = column[String]("steps")
 
+  def description = column[String]("description")
+
   def id = column[Int]("id", O.PrimaryKey, O.Unique, O.AutoInc)
 
   def * =
-    (name, steps, id) <> (Flow.apply _ tupled, Flow.unapply)
+    (name, steps, description, id.?) <> (Flow.apply _ tupled, Flow.unapply)
 
 }
 
@@ -45,6 +48,10 @@ class FlowRepository(implicit db: Database) {
 
   def getOneById(id: Int): Future[Option[Flow]] = {
     db.run(flowTableQuery.filter(_.id === id).result.headOption)
+  }
+
+  def getOneByName(name: String): Future[Option[Flow]] = {
+    db.run(flowTableQuery.filter(_.name === name).result.headOption)
   }
 
   def getAll: Future[Seq[Flow]] = {

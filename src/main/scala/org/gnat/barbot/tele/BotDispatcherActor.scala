@@ -81,6 +81,7 @@ class BotDispatcherActor(implicit config: Config, db: Database) extends Telegram
   // leads to initial state
   onCommandWithHelp("/start")("starts user session") { implicit msg =>
     val compositeUserActorName = getCompositeUserActorName
+
     getUserId match {
       case Some(id) =>
         val userName = getUserFullName
@@ -93,7 +94,7 @@ class BotDispatcherActor(implicit config: Config, db: Database) extends Telegram
           db.userRepository.getOneById(id).flatMap {
             // enforce order here
             case Some(_) => reply(String.format(greetingForRegistered, userName).stripMargin)
-              .andThen { case Success(_) => reply(String.format(sessionStart, userName).stripMargin) }
+              .andThen { case Success(_) => reply(String.format(sessionStarted, userName).stripMargin) }
             case None =>
               db.userRepository.createOne(User(nickName = getUserNickName,
                 firstName = getUserFirstName,
@@ -102,9 +103,10 @@ class BotDispatcherActor(implicit config: Config, db: Database) extends Telegram
               )).andThen { case Success(u) => log.info(s"user $u was created") }
               // enforce order here
               reply(String.format(greetingForFirstEncounter, userName).stripMargin)
-                .andThen { case Success(_) => reply(String.format(sessionStart, userName).stripMargin) }
+                .andThen { case Success(_) => reply(String.format(sessionStarted, userName).stripMargin) }
           }
           // watch fo it
+//          val dbRef = implicitly[Database]
           Option(context.watch(context.actorOf(BotUserActor.props(compositeUserActorName), compositeUserActorName)))
         }
       // TODO well... we can send something, but do we really need if FSM is in place?
@@ -121,7 +123,7 @@ class BotDispatcherActor(implicit config: Config, db: Database) extends Telegram
       case Some(child) =>
         log.debug(s"/stop called for session $compositeUserActorName")
         child ! PoisonPill
-        reply(String.format(sessionStop, getUserFullName))
+        reply(String.format(sessionStopped, getUserFullName))
       case None => sessionNotStartedHandler
       // self ! SessionNotStarted(String.format(sessionNotStarted, getUserFullName(msg)), msg)
     }
@@ -134,7 +136,7 @@ class BotDispatcherActor(implicit config: Config, db: Database) extends Telegram
       case Some(child) =>
         log.debug(s"/suggest called for session $compositeUserActorName")
         child ! TriggerResetDecision
-        reply(String.format(sessionStart, getUserFullName).stripMargin)
+        reply(String.format(sessionStarted, getUserFullName).stripMargin)
       case None => sessionNotStartedHandler
     }
   }
@@ -145,8 +147,7 @@ class BotDispatcherActor(implicit config: Config, db: Database) extends Telegram
     context.child(compositeUserActorName) match {
       case Some(child) =>
         log.debug(s"/suggest called for session $compositeUserActorName")
-        child ! TriggerInitDecision
-        reply(String.format(decisionDialogStarted, getUserFirstName).stripMargin)
+        child ! TriggerInitDecision(msg)
       case None => sessionNotStartedHandler
     }
   }
@@ -183,14 +184,14 @@ class BotDispatcherActor(implicit config: Config, db: Database) extends Telegram
             log.debug(s"$getUserFullName: entity ${msg.text.getOrElse("")} is known!")
             reply(String.format(commandAccepted, msg.text.getOrElse("")))
         }
-      // proceed - plain text message
+      // proceed if plain non-empty text message and session is established
       case None => for {
-        messageText <- msg.text
+        _ <- msg.text
         actor <- context.child(getCompositeUserActorName)
       } yield {
         // TODO remove echo later
         reply(s"echo of message: ${msg.text.getOrElse("default text")}")
-        actor ! messageText
+        actor ! TriggerPayload(msg)
       }
     }
   }
@@ -206,6 +207,7 @@ class BotDispatcherActor(implicit config: Config, db: Database) extends Telegram
 
   override def receive: Receive = {
     //    case SessionNotStarted(text, msg) => reply(text)(msg)
+    case eq@EventQuestion(text) => reply(text)(eq.msg)
     case Terminated(child) => log.debug(s"user actor ${child.path.name} was terminated")
     case um@_ => log.debug(s"actor ${self.path.name} received message:\n $um")
   }
