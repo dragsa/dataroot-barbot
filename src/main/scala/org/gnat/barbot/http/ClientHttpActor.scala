@@ -75,7 +75,7 @@ class ClientHttpActor(implicit config: Config) extends Actor with ClientJsonSupp
     case Failure(msg) =>
       log.info(s"actor ${self.path.name} actor failure happened:\n $msg")
       // TODO for simplicity all Failures are triggers for target to be temporary excluded
-      // (so far network issue is the only event identified leading to Failure)
+      // so far network issue is the only event identified leading to Failure
       // see barbot.cache.limbo-resurrection-timeout for details
       log.info(s"actor ${self.path.name} sending next BarExpired to parent for target:\n ${barId.get}")
       context.parent ! BarExpiredMessage(barId.get)

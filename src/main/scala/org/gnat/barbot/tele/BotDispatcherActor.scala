@@ -75,7 +75,10 @@ class BotDispatcherActor(implicit config: Config, db: Database) extends Telegram
     reply(helloReply)
   }
 
-  // start session, executed by remote Telegram participant upon click on Start, leads to initial state
+  // start session
+  // may be executed by remote Telegram participant upon click on Start
+  // or by sending /start to bot
+  // leads to initial state
   onCommandWithHelp("/start")("starts user session") { implicit msg =>
     val compositeUserActorName = getCompositeUserActorName
     getUserId match {
@@ -104,13 +107,14 @@ class BotDispatcherActor(implicit config: Config, db: Database) extends Telegram
           // watch fo it
           Option(context.watch(context.actorOf(BotUserActor.props(compositeUserActorName), compositeUserActorName)))
         }
-      // TODO well... we can send something, but do we really need?
+      // TODO well... we can send something, but do we really need if FSM is in place?
       //    }.foreach(_ ! StateIdle)
       case None => reply(userNotFound)
     }
   }
 
-  // close session completely, "/start" is required to init new one
+  // close session completely
+  // "/start" is required to init new one
   onCommandWithHelp("/stop")("kills user session") { implicit msg =>
     val compositeUserActorName = getCompositeUserActorName
     context.child(compositeUserActorName) match {
@@ -118,7 +122,7 @@ class BotDispatcherActor(implicit config: Config, db: Database) extends Telegram
         log.debug(s"/stop called for session $compositeUserActorName")
         child ! PoisonPill
         reply(String.format(sessionStop, getUserFullName))
-      case None => decisionDialogNotStartedHandler
+      case None => sessionNotStartedHandler
       // self ! SessionNotStarted(String.format(sessionNotStarted, getUserFullName(msg)), msg)
     }
   }
@@ -131,7 +135,7 @@ class BotDispatcherActor(implicit config: Config, db: Database) extends Telegram
         log.debug(s"/suggest called for session $compositeUserActorName")
         child ! TriggerResetDecision
         reply(String.format(sessionStart, getUserFullName).stripMargin)
-      case None => decisionDialogNotStartedHandler
+      case None => sessionNotStartedHandler
     }
   }
 
@@ -143,13 +147,13 @@ class BotDispatcherActor(implicit config: Config, db: Database) extends Telegram
         log.debug(s"/suggest called for session $compositeUserActorName")
         child ! TriggerInitDecision
         reply(String.format(decisionDialogStarted, getUserFirstName).stripMargin)
-      case None => decisionDialogNotStartedHandler
+      case None => sessionNotStartedHandler
     }
   }
 
-  private def decisionDialogNotStartedHandler(implicit msg: Message) = {
-    log.debug(s"${getUserFullName}: decision dialog not started")
-    reply(String.format(decisionDialogNotStarted, getUserFullName))
+  private def sessionNotStartedHandler(implicit msg: Message) = {
+    log.debug(s"$getUserFullName: decision dialog not started")
+    reply(String.format(sessionNotStarted, getUserFullName))
   }
 
   // provide history of visits
@@ -173,10 +177,10 @@ class BotDispatcherActor(implicit config: Config, db: Database) extends Telegram
         entitiesList.find(entity =>
           entity.`type`.equals(MessageEntityType.BotCommand) && !msg.text.exists(commandName => commands.contains(commandName))) match {
           case Some(_) =>
-            log.debug(s"${getUserFullName}: command ${msg.text.getOrElse("")} doesn't exist")
+            log.debug(s"$getUserFullName: command ${msg.text.getOrElse("")} doesn't exist")
             reply(String.format(commandNotAccepted, msg.text.getOrElse("")))
           case None =>
-            log.debug(s"${getUserFullName}: entity ${msg.text.getOrElse("")} is known!")
+            log.debug(s"$getUserFullName: entity ${msg.text.getOrElse("")} is known!")
             reply(String.format(commandAccepted, msg.text.getOrElse("")))
         }
       // proceed - plain text message
@@ -189,13 +193,6 @@ class BotDispatcherActor(implicit config: Config, db: Database) extends Telegram
         actor ! messageText
       }
     }
-  }
-
-
-  private def spawnTheChild(userId: String) = {
-    context.child(userId).getOrElse(
-      context.actorOf(BotUserActor.props(userId), userId)
-    )
   }
 
   override def preStart = {

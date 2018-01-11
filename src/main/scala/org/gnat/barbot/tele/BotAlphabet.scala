@@ -15,7 +15,7 @@ object BotAlphabet {
 
   val helloReply = "ready so serve, my Lord!"
 
-  val userNotFound = "user is unknown."
+  val userNotFound = "user is unknown"
 
   val commandNotAccepted = "command %s is not clear to me! please check /help details"
 
@@ -27,7 +27,7 @@ object BotAlphabet {
 
   val sessionAlreadyExists = "my dear %s, session already exists, should I /suggest?"
 
-  val decisionDialogNotStarted = "decision dialog is not started, please run /start"
+  val sessionNotStarted = "session is not started, please run /start"
 
   val decisionDialogStarted =
     s"""hey, %s!
