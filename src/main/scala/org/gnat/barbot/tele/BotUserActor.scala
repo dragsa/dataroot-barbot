@@ -38,9 +38,9 @@ object BotUserActor {
 
   case class DataDialog(routineName: String,
                         routineStepsLeft: List[String],
-                        dialogHistory: List[(String, String)]) extends Data
+                        dialogHistory: Map[String, String]) extends Data
 
-  case class DataDecision(msg: Message, dialogHistory: List[(String, String)]) extends Data
+  case class DataDecision(msg: Message, dialogResultWithWeights: Map[String, (String, Int)]) extends Data
 
   // outgoing events
   sealed trait Event
@@ -70,6 +70,9 @@ class BotUserActor(userId: String, cachingActor: ActorRef)(implicit config: Conf
   // not that flexible, but avoiding separate threads in replies to parent is mandatory
   val actualFlows = Await.result(db.flowRepository.getAll, Duration.Inf)
 
+  import scala.collection.JavaConverters._
+  val priorities = config.getObject("bot.priorities").unwrapped().asScala.toMap.map { case (k, v) => (k, v.asInstanceOf[Int]) }
+
   startWith(StateIdle, DataEmpty)
 
   when(StateIdle) {
@@ -90,15 +93,14 @@ class BotUserActor(userId: String, cachingActor: ActorRef)(implicit config: Conf
       // first step in dialog - flow choice should be made
       // Option.get is safe here - no empty inputs are propagated due to DispatcherActor logic in front
       implicit val msgRef = msg
-      if (actualFlows.map(_.name).contains(msg.text.get)) {
-        val flow = actualFlows.find(_.name == msg.text.get)
-        //Flow("full", "location,openHours,beer,wine,cuisine", "painful, slow but precise"))
-        val flowSteps = flow.get.steps.split(",").toList
-        goto(StateDialog) using DataDialog(msg.text.get, flowSteps, List()) replying
-          EventQuestion(String.format(questions(flowSteps.headOption.getOrElse("default")), getUserFirstName))
+      actualFlows.find(_.name == msg.text.get) match {
+        case Some(flow) =>
+          val flowSteps = flow.steps.split(",").toList
+          goto(StateDialog) using DataDialog(msg.text.get, flowSteps, Map()) replying
+            EventQuestion(String.format(questions(flowSteps.headOption.getOrElse("default")), getUserFirstName))
+        case None =>
+          stay replying EventError(s"flow '${msg.text.get}' doesn't exists")
       }
-      else
-        stay replying EventError(s"flow '${msg.text.get}' doesn't exists")
 
     case Event(RequestPayload(msg), dd@DataDialog(flow, stepsLeft, history)) =>
       // TODO user input validation needed, EventError can be used here
@@ -106,9 +108,11 @@ class BotUserActor(userId: String, cachingActor: ActorRef)(implicit config: Conf
       // Option.get is safe here - no empty inputs are propagated due to DispatcherActor logic in front
       implicit val msgRef = msg
       if (stepsLeft.length == 1) {
-        goto(StateDecision) using DataDecision(msg, (stepsLeft.head, msg.text.get) :: history) replying EventQuestionEnd(s"calculating, please be patient...")
+        goto(StateDecision) using DataDecision(msg, (history + (stepsLeft.head -> msg.text.get)).map {
+          case (k, v) => k -> (v, priorities(k))
+        }) replying EventQuestionEnd(s"calculating, please be patient...")
       } else {
-        goto(StateDialog) using dd.copy(flow, stepsLeft.tail, (stepsLeft.head, msg.text.get) :: history) replying
+        goto(StateDialog) using dd.copy(flow, stepsLeft.tail, history + (stepsLeft.head -> msg.text.get)) replying
           EventQuestion(String.format(questions(stepsLeft.tail.head), getUserFirstName))
       }
   }
@@ -127,12 +131,12 @@ class BotUserActor(userId: String, cachingActor: ActorRef)(implicit config: Conf
 
   onTransition {
     case stateChange@(StateDialog -> StateDecision) =>
-      log.info(s"I am ${self.path.name}:\n state is changing ${stateChange._1 + " -> " + stateChange._2}\n current data is $stateData\n next data is $nextStateData")
+      log.info(s"I am ${self.path.name}:\n state is changing\n\t${stateChange._1 + " -> " + stateChange._2}\n current data is\n\t$stateData\n next data is\n\t$nextStateData")
       log.info(s"calculating possible variants")
       cachingActor ! CachingActorProvideCache
 
     case stateChange =>
-      log.info(s"I am ${self.path.name}:\n state is changing ${stateChange._1 + " -> " + stateChange._2}\n current data is $stateData\n next data is $nextStateData")
+      log.info(s"I am ${self.path.name}:\n state is changing\n\t${stateChange._1 + " -> " + stateChange._2}\n current data is $stateData\n next data is\n\t$nextStateData")
   }
 
   override def preStart = {

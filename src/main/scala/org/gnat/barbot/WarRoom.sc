@@ -23,3 +23,11 @@ val flows = List(("basic", "short, fast but less accurate"),
   ("full", "painful, slow but precise"))
 (String.format(decisionDialogStarted, "Andrii") + (flows.map(f => "|" + f._1 + " -> " + f._2) mkString "\n")).stripMargin
 flows.flatMap(_._2.split(","))
+
+Map("location" -> "%s, how far the place can be located?\nyou can reply: 'near', 'far' or 'middle'",
+  "openHours" -> "%s, what are ideal open hours for you?\nin 'HH:MM-HH:MM' format, please",
+  "placesAvailable" -> "%s, how many guests will be there?",
+  "beer" -> "%s, what kind of bear do you prefer?\nI've heard that now in Kiev there are only: 'red', 'cider', 'light, 'dark' or 'craft'",
+  "wine" -> "%s, what kind of wine do you prefer?\nrumors are that you can find: 'red dry', 'white dry', 'red semi-sweet', 'white sweet'",
+  "cuisine" -> "%s, what is your favorite cuisine?\nchoices are: 'italian', 'european', 'czech', 'jewish'",
+  "default" -> "%s, how are you? we are fixing issue on server side...").keys

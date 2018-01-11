@@ -186,7 +186,7 @@ class BotDispatcherActor(cachingActor: ActorRef)(implicit config: Config, db: Da
         actor <- context.child(getCompositeUserActorName)
       } yield {
         // TODO remove echo later
-        reply(s"echo of message: ${msg.text.getOrElse("default text")}")
+        //reply(s"echo of message: ${msg.text.getOrElse("default text")}")
         actor ! RequestPayload(msg)
       }
     }
