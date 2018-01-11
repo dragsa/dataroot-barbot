@@ -20,7 +20,6 @@ object ClientHttpActor {
   def props(implicit config: Config) = Props(new ClientHttpActor)
 }
 
-// TODO factor out pattern "actor ${self.path.name}" into logging configuration or utils
 class ClientHttpActor(implicit config: Config) extends Actor with ClientJsonSupport with ActorLogging {
 
   // TODO Caching -> Http refs doubt

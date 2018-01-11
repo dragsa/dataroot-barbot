@@ -21,7 +21,7 @@ trait Database extends LazyLogging {
     "visits" -> visitRepository.visitTableQuery,
     "flows" -> flowRepository.flowTableQuery)
 
-  // TODO move flows into configuration file, sort of complex task
+  // TODO move flows into configuration file, sort of "fuzzy" task
   private val defaultFlows = List(Flow("basic", "location,openHours,placesAvailable", "short, fast but less accurate"),
     Flow("full", "location,openHours,placesAvailable,beer,wine,cuisine", "painful, slow but precise"))
 

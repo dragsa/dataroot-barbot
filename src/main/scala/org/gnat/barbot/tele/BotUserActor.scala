@@ -66,7 +66,7 @@ object BotUserActor {
 
 class BotUserActor(userId: String, cachingActor: ActorRef)(implicit config: Config, db: Database) extends FSM[State, Data] with ActorLogging {
 
-  // TODO removing blocking code
+  // TODO remove blocking code in favor of DB access faliures
   // not that flexible, but avoiding separate threads in replies to parent is mandatory
   val actualFlows = Await.result(db.flowRepository.getAll, Duration.Inf)
 

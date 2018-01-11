@@ -7,7 +7,6 @@ import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.LazyLogging
 import org.gnat.barbot.http._
 import org.gnat.barbot.http.ClientCachingActor._
-import org.gnat.barbot.tele.BotDispatcherActor
 
 import scala.io.StdIn
 

@@ -52,7 +52,7 @@ object BotDispatcherActor {
     - bypass messages to child actors
     */
 
-// TODO the most painful TODO - move on top of WebHooks implementation
+// TODO the most painful debt - move on top of WebHooks implementation
 // as this one leads wo extremely unpleasant user's experience
 
 class BotDispatcherActor(cachingActor: ActorRef)(implicit config: Config, db: Database) extends TelegramBot with Polling with Commands with Help with Actor with ActorLogging {
@@ -108,8 +108,6 @@ class BotDispatcherActor(cachingActor: ActorRef)(implicit config: Config, db: Da
           // watch fo it
           Option(context.watch(context.actorOf(BotUserActor.props(compositeUserActorName, cachingActor), compositeUserActorName)))
         }
-      // TODO well... we can send something, but do we really need if FSM is in place?
-      //    }.foreach(_ ! StateIdle)
       case None => reply(userNotFound)
     }
   }

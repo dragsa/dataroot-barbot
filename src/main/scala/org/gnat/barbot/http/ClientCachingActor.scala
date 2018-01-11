@@ -50,7 +50,7 @@ class ClientCachingActor(implicit config: Config, db: Database)
   val limboResurrectionTimeout = cacheConfig.getLong("limbo-resurrection-timeout")
   val banishToValhalla = cacheConfig.getBoolean("banish-to-valhalla")
 
-  // TODO so far no need to custom SV strategy
+  // TODO so far no need to custom SV strategy, still a good thing to consider
   //  override def supervisorStrategy: SupervisorStrategy = OneForOneStrategy() {
   //    {
   //      case msg@default => if (banishToValhalla) {
