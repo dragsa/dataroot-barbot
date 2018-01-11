@@ -3,7 +3,7 @@ package org.gnat.barbot.http
 import akka.actor.{Actor, ActorLogging, ActorRef, Cancellable, Props}
 import com.typesafe.config.Config
 import org.gnat.barbot.Database
-import org.gnat.barbot.http.ClientCachingActor.{CachingActorProvideCache, CachingActorRefreshCache, CachingActorStart}
+import org.gnat.barbot.http.ClientCachingActor.{CachingActorCache, CachingActorProvideCache, CachingActorRefreshCache, CachingActorStart}
 import org.gnat.barbot.http.ClientHttpActor.GetTarget
 import org.gnat.barbot.http.Utils._
 
@@ -20,6 +20,8 @@ object ClientCachingActor {
   case object CachingActorRefreshCache extends CachingActorControlMessage
 
   case object CachingActorProvideCache extends CachingActorControlMessage
+
+  case class CachingActorCache(cache: Map[Int, (BarStateMessage, Long)])
 
   def props(implicit config: Config, db: Database) =
     Props(new ClientCachingActor)
@@ -77,7 +79,7 @@ class ClientCachingActor(implicit config: Config, db: Database)
           val cachedTargetsReadyForRefresh = if (cachedTargets.cacheValue.isEmpty) {
             val initialCache = bars.map(_.id.get)
             log.debug(s"initial cache contains targets with Ids:\n ${iterableIdsPrettyFormat(initialCache)}")
-            cachedTargets.cacheValue = (initialCache zip List.fill(initialCache.size)(BarStateMessage("", "", "", List(), List(), List()), 0L)).toMap
+            cachedTargets.cacheValue = (initialCache zip List.fill(initialCache.size)(BarStateMessage("", "", "", 0, List(), List(), List()), 0L)).toMap
             initialCache
           }
           else {
@@ -96,8 +98,12 @@ class ClientCachingActor(implicit config: Config, db: Database)
         })
 
     case CachingActorProvideCache =>
+      log.info("request to provide cache received")
       senderRef = Option(sender)
-      senderRef.foreach(_ ! cachedTargets)
+      senderRef.foreach{
+        log.info(s"sending cache to ${senderRef.get}")
+        _ ! CachingActorCache(cachedTargets.eligible)
+      }
 
     // TODO type erasure here, seems to be safe due to actor messaging in place
     case bsmTuple: (Some[Int], BarStateMessage) =>
@@ -130,10 +136,10 @@ class ClientCachingActor(implicit config: Config, db: Database)
   }
 
   override def preStart = {
-    log.debug(s"actor ${self.path.name}, Father of all Http Actors is here")
+    log.debug(s"${self.path.name}, Father of all Http Actors is here")
   }
 
   override def postStop = {
-    log.debug(s"actor ${self.path.name} is dying")
+    log.debug(s"${self.path.name} is dying")
   }
 }

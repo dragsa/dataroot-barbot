@@ -3,6 +3,7 @@
     "name": "Pivnaya Duma 1",
     "location": "close",
     "openHours": "11:00-23:30",
+    "placesAvailable": 7,
     "beer": [
       "light",
       "dark",
@@ -23,6 +24,7 @@
     "name": "Staromak",
     "location": "far",
     "openHours": "13:00-03:00",
+    "placesAvailable": 25,
     "beer": [
       "light",
       "dark",
@@ -37,11 +39,12 @@
       "czech",
       "jewish"
     ]
-  }
+  },
   "Vinsanto": {
     "name": "Vinsanto",
     "location": "middle",
     "openHours": "13:00-03:00",
+    "placesAvailable": 5,
     "wine": [
       "red dry",
       "white dry"

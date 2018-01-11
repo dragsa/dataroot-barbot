@@ -81,17 +81,16 @@ class ClientHttpActor(implicit config: Config) extends Actor with ClientJsonSupp
       context.parent ! BarExpiredMessage(barId.get)
       self ! PoisonPill
 
-
     case um@_ =>
-      log.info(s"actor ${self.path.name} received unexpected message:\n $um")
+      log.info(s"${self.path.name} received unexpected message:\n $um")
       self ! PoisonPill
   }
 
   override def preStart = {
-    log.debug(s"actor ${self.path.name} is alive and well")
+    log.debug(s"${self.path.name} is alive and well")
   }
 
   override def postStop = {
-    log.debug(s"actor ${self.path.name} is dying")
+    log.debug(s"${self.path.name} is dying")
   }
 }

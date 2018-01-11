@@ -24,14 +24,16 @@ package object http {
   sealed trait ExternalEventMessage
 
   case class BarStateMessage(name: String,
-                                   location: String,
-                                   openHours: String,
-                                   beersList: List[String],
-                                   wineList: List[String],
-                                   cuisine: List[String])
+                             location: String,
+                             openHours: String,
+                             placesAvailable: Int,
+                             beersList: List[String],
+                             wineList: List[String],
+                             cuisine: List[String])
     extends ExternalEventMessage
 
   case class BarExpiredMessage(id: Int) extends ExternalEventMessage
+
   case class BarDeadMessage(id: Int) extends ExternalEventMessage
 
   trait ClientJsonSupport extends SprayJsonSupport with DefaultJsonProtocol {
@@ -39,8 +41,10 @@ package object http {
       "name",
       "location",
       "openHours",
+      "placesAvailable",
       "beer",
       "wine",
       "cuisine")
   }
+
 }

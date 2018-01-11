@@ -1,13 +1,13 @@
 package org.gnat.barbot.tele
 
-import akka.actor.{Actor, ActorLogging, PoisonPill, Props, Terminated}
+import akka.actor.{Actor, ActorLogging, ActorRef, PoisonPill, Props, Terminated}
 import com.typesafe.config.Config
 import info.mukel.telegrambot4s.api.declarative.{Commands, Help}
 import info.mukel.telegrambot4s.api.{Polling, TelegramBot}
 import info.mukel.telegrambot4s.models.{Message, MessageEntityType}
 import org.gnat.barbot.Database
 import org.gnat.barbot.models.User
-import org.gnat.barbot.tele.BotAlphabet._
+import org.gnat.barbot.tele.BotLexicon._
 import org.gnat.barbot.tele.BotUserActor._
 
 import scala.io.Source
@@ -40,7 +40,7 @@ object BotDispatcherActor {
 
   def commands = BarCrawlerBotCommands.values.map(_.toString).toList
 
-  def props(implicit config: Config, db: Database) = Props(new BotDispatcherActor)
+  def props(cachingActor: ActorRef)(implicit config: Config, db: Database) = Props(new BotDispatcherActor(cachingActor))
 }
 
 /* Router actor which should:
@@ -55,7 +55,7 @@ object BotDispatcherActor {
 // TODO the most painful TODO - move on top of WebHooks implementation
 // as this one leads wo extremely unpleasant user's experience
 
-class BotDispatcherActor(implicit config: Config, db: Database) extends TelegramBot with Polling with Commands with Help with Actor with ActorLogging {
+class BotDispatcherActor(cachingActor: ActorRef)(implicit config: Config, db: Database) extends TelegramBot with Polling with Commands with Help with Actor with ActorLogging {
   lazy val token = scala.util.Properties
     .envOrNone("BOT_TOKEN")
     .getOrElse(Source.fromResource("bot.token").getLines.mkString)
@@ -106,7 +106,7 @@ class BotDispatcherActor(implicit config: Config, db: Database) extends Telegram
                 .andThen { case Success(_) => reply(String.format(sessionStarted, userName).stripMargin) }
           }
           // watch fo it
-          Option(context.watch(context.actorOf(BotUserActor.props(compositeUserActorName), compositeUserActorName)))
+          Option(context.watch(context.actorOf(BotUserActor.props(compositeUserActorName, cachingActor), compositeUserActorName)))
         }
       // TODO well... we can send something, but do we really need if FSM is in place?
       //    }.foreach(_ ! StateIdle)
@@ -195,19 +195,25 @@ class BotDispatcherActor(implicit config: Config, db: Database) extends Telegram
   }
 
   override def preStart = {
-    log.debug(s"actor ${self.path.name}, Father of all Bot User Actors is here")
+    log.debug(s"${self.path.name}, Father of all Bot User Actors is here")
     run
   }
 
   override def postStop = {
-    log.debug(s"actor ${self.path.name} is dying")
+    log.debug(s"${self.path.name} is dying")
   }
 
   override def receive: Receive = {
     case eQuestion@EventQuestion(text) => reply(text)(eQuestion.msg)
+
+    case qQuestionEnd@EventQuestionEnd(text) => reply(text)(qQuestionEnd.msg)
+
     case eError@EventError(text) => reply(text)(eError.msg)
+
     case eReset@EventReset(_) => reply(String.format(sessionStarted, getUserFullName(eReset.msg)).stripMargin)(eReset.msg)
+
     case Terminated(child) => log.debug(s"user actor ${child.path.name} was terminated")
+
     case um@_ => log.debug(s"actor ${self.path.name} received unexpected message:\n $um")
   }
 }

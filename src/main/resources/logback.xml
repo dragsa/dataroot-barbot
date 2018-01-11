@@ -12,9 +12,9 @@
     <logger name="slick.jdbc.JdbcBackend.statement" level="INFO"/>
     <logger name="slick.jdbc.StatementInvoker.result" level="INFO"/>
 
-    <logger name="org.gnat.barbot" level="DEBUG"/>
+    <logger name="org.gnat.barbot.http" level="INFO"/>
+    <logger name="org.gnat.barbot.tele" level="DEBUG"/>
 
-    <!-- first place to debug-->
     <logger name="akka" level="INFO" />
 
     <root level="info">

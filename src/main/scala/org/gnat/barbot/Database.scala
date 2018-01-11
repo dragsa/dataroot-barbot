@@ -22,8 +22,8 @@ trait Database extends LazyLogging {
     "flows" -> flowRepository.flowTableQuery)
 
   // TODO move flows into configuration file, sort of complex task
-  private val defaultFlows = List(Flow("basic", "location,openHours", "short, fast but less accurate"),
-    Flow("full", "location,openHours,beer,wine,cuisine", "painful, slow but precise"))
+  private val defaultFlows = List(Flow("basic", "location,openHours,placesAvailable", "short, fast but less accurate"),
+    Flow("full", "location,openHours,placesAvailable,beer,wine,cuisine", "painful, slow but precise"))
 
   // TODO add schema checking and migration code
   private def initTables: Unit = {
