@@ -29,7 +29,8 @@ package object http {
                              placesAvailable: Int,
                              beersList: List[String],
                              wineList: List[String],
-                             cuisine: List[String])
+                             cuisine: List[String],
+                             site: String)
     extends ExternalEventMessage
 
   case class BarExpiredMessage(id: Int) extends ExternalEventMessage
@@ -44,7 +45,8 @@ package object http {
       "placesAvailable",
       "beer",
       "wine",
-      "cuisine")
+      "cuisine",
+      "site")
   }
 
 }

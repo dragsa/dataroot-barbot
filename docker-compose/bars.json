@@ -1,7 +1,7 @@
 {
   "PD1": {
     "name": "Pivnaya Duma 1",
-    "location": "close",
+    "location": "near",
     "openHours": "11:00-23:30",
     "placesAvailable": 7,
     "beer": [
@@ -18,7 +18,8 @@
     "cuisine": [
       "european",
       "italian"
-    ]
+    ],
+    "site": "http://staromacek.com.ua/"
   },
   "Staromak": {
     "name": "Staromak",
@@ -38,7 +39,8 @@
       "european",
       "czech",
       "jewish"
-    ]
+    ],
+    "site": "http://staromacek.com.ua/"
   },
   "Vinsanto": {
     "name": "Vinsanto",
@@ -51,7 +53,8 @@
     ],
     "cuisine": [
       "italian"
-    ]
+    ],
+    "site": "https://vinsanto.com.ua/"
   },
   "Error": {
     "name": "Not valid name",

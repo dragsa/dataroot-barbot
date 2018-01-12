@@ -21,7 +21,7 @@ object ClientCachingActor {
 
   case object CachingActorProvideCache extends CachingActorControlMessage
 
-  case class CachingActorCache(cache: Map[Int, (BarStateMessage, Long)])
+  case class CachingActorCache(cache: List[BarStateMessage])
 
   def props(implicit config: Config, db: Database) =
     Props(new ClientCachingActor)
@@ -31,6 +31,7 @@ object ClientCachingActor {
     // "sort of dead" means that target won't be included during decision calculations
     var cacheValue: Map[Int, (BarStateMessage, Long)] = Map[Int, (BarStateMessage, Long)]()
 
+    // get all active and strip off control info
     def eligible = cacheValue.filter(target => !target._2._1.name.isEmpty && target._2._2 == 0L)
 
     override def toString: String = cachePrettyFormat(cacheValue)
@@ -79,7 +80,7 @@ class ClientCachingActor(implicit config: Config, db: Database)
           val cachedTargetsReadyForRefresh = if (cachedTargets.cacheValue.isEmpty) {
             val initialCache = bars.map(_.id.get)
             log.debug(s"initial cache contains targets with Ids:\n ${iterableIdsPrettyFormat(initialCache)}")
-            cachedTargets.cacheValue = (initialCache zip List.fill(initialCache.size)(BarStateMessage("", "", "", 0, List(), List(), List()), 0L)).toMap
+            cachedTargets.cacheValue = (initialCache zip List.fill(initialCache.size)(BarStateMessage("", "", "", 0, List(), List(), List(), ""), 0L)).toMap
             initialCache
           }
           else {
@@ -102,7 +103,7 @@ class ClientCachingActor(implicit config: Config, db: Database)
       senderRef = Option(sender)
       senderRef.foreach{
         log.info(s"sending cache to ${senderRef.get}")
-        _ ! CachingActorCache(cachedTargets.eligible)
+        _ ! CachingActorCache(cachedTargets.eligible.values.map(_._1).toList)
       }
 
     // TODO type erasure here, seems to be safe due to actor messaging in place

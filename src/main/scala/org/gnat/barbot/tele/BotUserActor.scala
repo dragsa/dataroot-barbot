@@ -4,6 +4,7 @@ import akka.actor.{ActorLogging, ActorRef, FSM, Props}
 import com.typesafe.config.Config
 import info.mukel.telegrambot4s.models.Message
 import org.gnat.barbot.Database
+import org.gnat.barbot.http.BarStateMessage
 import org.gnat.barbot.http.ClientCachingActor.{CachingActorCache, CachingActorProvideCache}
 import org.gnat.barbot.tele.BotLexicon._
 import org.gnat.barbot.tele.BotUserActor._
@@ -123,10 +124,17 @@ class BotUserActor(userId: String, cachingActor: ActorRef)(implicit config: Conf
       goto(StateIdle) using DataEmpty replying EventReset("reset text")
 
     case Event(CachingActorCache(cache), DataDecision(msg, dialogHistory)) =>
+      implicit val msgRef = msg
+      implicit val historyRef = dialogHistory
       log.info(s"got next cache from sibling:\n $cache")
-      // TODO decision calculation
-      context.parent ! List("Fake Bar 1", " Fake Bar 2")
+      // TODO decision calculation here
+      val barSortedByWeight = cache.map(barEvaluator).sortBy(_._1)
+      context.parent ! barSortedByWeight
       stay
+  }
+
+  def barEvaluator(barState: BarStateMessage)(implicit dialogHistory: Map[String, (String, Int)]): (Double, String, String) = {
+    (dialogHistory.getOrElse("location", ("default", 0))._2.toDouble, barState.name, barState.site)
   }
 
   onTransition {
