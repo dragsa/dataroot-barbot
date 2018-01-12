@@ -22,10 +22,6 @@ object ClientHttpActor {
 
 class ClientHttpActor(implicit config: Config) extends Actor with ClientJsonSupport with ActorLogging {
 
-  // TODO Caching -> Http refs doubt
-  // is the context always pointing to parent?
-  // and thus don't we need to keep sender ref to avoid lost messages?
-  // var senderRef = Option[ActorRef]
   var barId: Option[Int] = None
   val cacheConfig = config.getConfig("cache")
   val banishToValhalla = cacheConfig.getBoolean("banish-to-valhalla")
@@ -38,13 +34,11 @@ class ClientHttpActor(implicit config: Config) extends Actor with ClientJsonSupp
   override def receive: Receive = {
 
     case gt@GetTarget(id, url) =>
-      // senderRef = sender
       barId = Option(id)
       log.info(s"actor ${self.path.name} received:\n $gt")
       http.singleRequest(HttpRequest(uri = url)).pipeTo(self)
 
     case HttpResponse(StatusCodes.OK, headers, entity, _) =>
-      // TODO do we really need streaming here?
       entity.dataBytes
         .map(_.utf8String)
         .map { potentialEntity =>
@@ -64,7 +58,7 @@ class ClientHttpActor(implicit config: Config) extends Actor with ClientJsonSupp
     case resp@HttpResponse(code, headers, entity, _) =>
       log.info(s"actor ${self.path.name} request failed, response code:\n $code")
       resp.discardEntityBytes()
-      // TODO for simplicity all non-200OK responses are triggers for target becoming dead
+      // TODO for simplicity all non-200OK responses are triggers for target becoming dead, may be improved
       // after this the only way for target to get back - update itself via public API
       // see barbot.cache.banish-to-valhalla for details
       log.info(s"actor ${self.path.name} sending BarDead to parent for target:\n ${barId.get}")
@@ -73,7 +67,7 @@ class ClientHttpActor(implicit config: Config) extends Actor with ClientJsonSupp
 
     case Failure(msg) =>
       log.info(s"actor ${self.path.name} actor failure happened:\n $msg")
-      // TODO for simplicity all Failures are triggers for target to be temporary excluded
+      // TODO for simplicity all Failures are triggers for target to be temporary excluded, may be improved
       // so far network issue is the only event identified leading to Failure
       // see barbot.cache.limbo-resurrection-timeout for details
       log.info(s"actor ${self.path.name} sending next BarExpired to parent for target:\n ${barId.get}")

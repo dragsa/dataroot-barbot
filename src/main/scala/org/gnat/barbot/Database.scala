@@ -30,6 +30,7 @@ trait Database extends LazyLogging {
     tables.keys.foreach(tableCreator)
   }
 
+  // TODO remove blocking code in favor of DB access faliures
   private def initFlows: Unit = {
     defaultFlows.foreach(flowToCreate => Await.result(flowRepository.getOneByName(flowToCreate.name).flatMap {
       case None =>
@@ -40,6 +41,7 @@ trait Database extends LazyLogging {
     }, Duration.Inf))
   }
 
+  // TODO remove blocking code in favor of DB access faliures
   private def tableCreator(tableName: String): Unit = {
     Await.result(
       db.run(MTable.getTables(tableName))

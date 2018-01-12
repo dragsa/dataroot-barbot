@@ -31,13 +31,6 @@ object BotDispatcherActor {
     val history = Value("/history")
   }
 
-  // TODO sending messages to self and then reply doesn't seem to help with delays at all
-  //  trait DispatcherReply
-  //
-  //  case class SessionNotStarted(str: String, msg: Message) extends DispatcherReply
-  //
-  //  case class Greeting(str: String, msg: Message) extends DispatcherReply
-
   def commands = BarCrawlerBotCommands.values.map(_.toString).toList
 
   def props(cachingActor: ActorRef)(implicit config: Config, db: Database) = Props(new BotDispatcherActor(cachingActor))
@@ -52,9 +45,6 @@ object BotDispatcherActor {
     - bypass messages to child actors
     */
 
-// TODO the most painful debt - move on top of WebHooks implementation
-// as this one leads wo extremely unpleasant user's experience
-
 class BotDispatcherActor(cachingActor: ActorRef)(implicit config: Config, db: Database) extends TelegramBot with Polling with Commands with Help with Actor with ActorLogging {
   lazy val token = scala.util.Properties
     .envOrNone("BOT_TOKEN")
@@ -63,6 +53,8 @@ class BotDispatcherActor(cachingActor: ActorRef)(implicit config: Config, db: Da
   val botConfig = config.getConfig("bot")
 
   // TODO kind of temp hack, allowing smooth user experience
+  //  the most painful debt - move on top of WebHooks implementation
+  // as this one leads wo extremely unpleasant user's experience
   override def pollingInterval = botConfig.getInt("polling-interval")
 
   import BotDispatcherActor.commands
@@ -153,9 +145,8 @@ class BotDispatcherActor(cachingActor: ActorRef)(implicit config: Config, db: Da
     reply(String.format(sessionNotStarted, getUserFullName))
   }
 
-  // provide history of visits
-  // TODO
-  // add parameters to control:
+  // TODO provide history of visits
+  // with parameters to control:
   // - how many records
   // - sorting by
   // - sorting order
@@ -185,7 +176,6 @@ class BotDispatcherActor(cachingActor: ActorRef)(implicit config: Config, db: Da
         _ <- msg.text
         actor <- context.child(getCompositeUserActorName)
       } yield {
-        // TODO remove echo later
         //reply(s"echo of message: ${msg.text.getOrElse("default text")}")
         actor ! RequestPayload(msg)
       }

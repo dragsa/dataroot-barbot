@@ -19,8 +19,7 @@ import scala.concurrent.Future
 
 class UserTable(tag: Tag) extends Table[User](tag, "users") {
 
-  // TODO unique and null column...
-  // should be OK according to Postgres view
+  // unique and null column should be OK according to Postgres view
   def nickName = column[Option[String]]("nick_name", O.Unique, O.Length(100))
 
   def firstName = column[String]("first_name", O.Length(50))
