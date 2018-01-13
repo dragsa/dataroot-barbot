@@ -39,7 +39,9 @@ _features to be implemented:_
 In order to operate properly BarBot needs sources of data. Local development env uses fake bars and those are provided via containers.
 Steps to setup dev env:
 - start docker compose:
+
   `docker-compos -f docker-compose/docker-compose.yaml up`
+  
   this includes database and fake bars server running on some_IP:8080; this fake server is just a JSON serving entity which has 3 different resources to simulate real-life different IP addresses;
 - start BarBot;
 - register fake bars via BarBot register API.
@@ -47,5 +49,7 @@ Steps to setup dev env:
 unfortunately, given the way docker is implemented on Windows platform there seems to be no way to provide registration data as plain SQL inserts because IP addresses are different on each deployment.
 
 samples to register using Postman export are provided in project and named
+
 `dataroot-barbot-public.postman_collection.json`
+
 IP address in attribute "locationUrl" should be changed to point to the one on which fake bars server is running.
