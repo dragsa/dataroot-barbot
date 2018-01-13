@@ -31,3 +31,13 @@ Map("location" -> "%s, how far the place can be located?\nyou can reply: 'near',
   "wine" -> "%s, what kind of wine do you prefer?\nrumors are that you can find: 'red dry', 'white dry', 'red semi-sweet', 'white sweet'",
   "cuisine" -> "%s, what is your favorite cuisine?\nchoices are: 'italian', 'european', 'czech', 'jewish'",
   "default" -> "%s, how are you? we are fixing issue on server side...").keys
+
+import org.gnat.barbot.http.BarStateMessage
+
+import scala.reflect.runtime.universe._
+
+def classAccessors[T: TypeTag]: List[MethodSymbol] = typeOf[T].members.collect {
+  case m: MethodSymbol if m.isCaseAccessor => m
+}.toList
+
+classAccessors[BarStateMessage]

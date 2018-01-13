@@ -57,6 +57,11 @@ object BotUserActor {
   case class EventReset(text: String)(implicit val msg: Message) extends Event
 
   def props(userId: String, cachingActor: ActorRef)(implicit config: Config, db: Database) = Props(new BotUserActor(userId, cachingActor))
+
+  import scala.reflect.runtime.universe._
+  val barFields = typeOf[BarStateMessage].members.collect {
+    case m: MethodSymbol if m.isCaseAccessor => m
+  }.toList.map(_.toString.drop("value ".length))
 }
 
 /* User actor which should:
@@ -100,7 +105,7 @@ class BotUserActor(userId: String, cachingActor: ActorRef)(implicit config: Conf
       implicit val msgRef = msg
       goto(StateDialog) using DataEmpty replying EventReset(sessionRestartedInDialog + "\n\n" +
         (String.format(decisionDialogStarted, getUserFirstName) +
-        (actualFlows.map(f => "|" + f.name + " -> " + f.description) mkString "\n")).stripMargin)
+          (actualFlows.map(f => "|" + f.name + " -> " + f.description) mkString "\n")).stripMargin)
 
     case Event(RequestPayload(msg), DataEmpty) =>
       // first step in dialog - flow choice should be made
@@ -143,17 +148,30 @@ class BotUserActor(userId: String, cachingActor: ActorRef)(implicit config: Conf
 
     case Event(CachingActorCache(cache), DataDecision(msg, dialogHistory)) =>
       implicit val msgRef = msg
-      implicit val historyRef = dialogHistory
       log.info(s"got next cache from sibling:\n $cache")
       // TODO decision calculation here
-      val barSortedByWeight = cache.map(barEvaluator).sortBy(_._1)
-      context.parent ! EventDecisionMade(barSortedByWeight.toString)
+      val barSortedByWeight = cache.map(barEvaluator(_, dialogHistory)).sortBy(_._1)
+        .reverse.map(bar => s"score: ${bar._1}, bar: ${bar._2}, site: ${bar._3}")
+      context.parent ! EventDecisionMade(barSortedByWeight mkString "\n")
       stay
   }
 
-  private def barEvaluator(barState: BarStateMessage)(implicit dialogHistory: Map[String, (String, Int)]): (Double, String, String) = {
+  private def barEvaluator(barState: BarStateMessage, dialogHistory: Map[String, (String, Int)]): (Double, String, String) = {
+//    val barParametersFromUser = barFields.filter(dialogHistory.keys.toList.contains(_))
     val locationFromDialog = dialogHistory.getOrElse("location", ("default", 0))
     ((if (barState.location == locationFromDialog._1) locationFromDialog._2 else 0).toDouble, barState.name, barState.site)
+  }
+
+  private def weightFuncation(weightTuple: (String, Int)) = {
+    weightTuple._1 match {
+      case "default" => weightTuple._2.toDouble
+      case "location" =>
+      case "openHours" =>
+      case "placesAvailable" =>
+      case "cuisine" =>
+      case "wine" =>
+      case "beer" =>
+    }
   }
 
   onTransition {

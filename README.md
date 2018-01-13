@@ -2,11 +2,11 @@
 
 _TL; DR_
 
-Telegram chat bot capable of suggesting most suitable bar for this evening’s "getting wasted".
-Decision is provided in a form of a sorted list, making sure there are vacant places, preferred selection of drinks/food available too.
-Optionally bot should be able to book a table.
+telegram chat bot capable of suggesting most suitable bar for this evening’s "getting wasted".
+decision is provided in a form of a sorted list, making sure there are vacant places, preferred selection of drinks/food available too.
+optionally bot should be able to book a table.
 
-_Available features:_
+_available features:_
 
 - at its core system is not something gradually destroying one's liver, rather a sort of a decision making engine;
 - it is assumed that bars eligible for selection are able to provide some public web page with the necessary information in form of JSON (like working hours, vacant places, booking capabilities), i.e. follow some defined protocol; there is mock web service for dev purposes provided simulating a couple of bars;
@@ -18,11 +18,11 @@ _Available features:_
 2) preferred drink types and cuisine;
 3) distance to a bar (dummy data, not really functional yet).
 
-_Features to be implemented:_
+_features to be implemented:_
 
 - simulate something similar to personal assistance, bot should maintain database to store user's visits and marks;
 - bot should provide a way to search through the history of visits;
-- booking a table (not clear how to approach this at this point);
+- booking a table (not clear how to approach at this point);
 - provide a way to expand questionnaire list via config in a form of configurable keywords list; 
 - add additional decision factors:
 1) geographical location with the help of Google API;
@@ -38,14 +38,14 @@ _Features to be implemented:_
 
 In order to operate properly BarBot needs sources of data. Local development env uses fake bars and those are provided via containers.
 Steps to setup dev env:
-- start docker composition; this includes database and fake bars server running on some_IP:8080; this fake server is just a JSON serving entity which has 3 different resources to simulate real-life different IP addresses;
+- start docker compose:
+  `docker-compos -f docker-compose/docker-compose.yaml up`
+  this includes database and fake bars server running on some_IP:8080; this fake server is just a JSON serving entity which has 3 different resources to simulate real-life different IP addresses;
 - start BarBot;
 - register fake bars via BarBot register API.
 
 unfortunately, given the way docker is implemented on Windows platform there seems to be no way to provide registration data as plain SQL inserts because IP addresses are different on each deployment.
 
-samples to register are in Postman export provided in project and named
-
+samples to register using Postman export are provided in project and named
 `dataroot-barbot-public.postman_collection.json`
-
 IP address in attribute "locationUrl" should be changed to point to the one on which fake bars server is running.
