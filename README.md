@@ -44,8 +44,8 @@ Steps to setup dev env:
 
 unfortunately, given the way docker is implemented on Windows platform there seems to be no way to provide registration data as plain SQL inserts because IP addresses are different on each deployment.
 
-samples to register are in Postman export below:
+samples to register are in Postman export provided in project and named
 
-dataroot-barbot-public.postman_collection.json
+`dataroot-barbot-public.postman_collection.json`
 
 IP address in attribute "locationUrl" should be changed to point to the one on which fake bars server is running.
