@@ -23,15 +23,26 @@ object BotLexicon {
 
   val sessionStopped = "goodbye, %s!"
 
-  val sessionStarted = "my dear %s, session was established, should I /suggest?"
+  val sessionStarted = "session was established, should I /suggest?"
 
-  val sessionAlreadyExists = "my dear %s, session already exists, should I /suggest?"
+  val sessionRestartedInDialog = "session was restarted and all progress was lost"
+
+  val sessionRestartedInIdle = "session was restarted while no progress made"
+
+  val sessionAlreadyExists = "session already exists, should I /suggest?"
 
   val sessionNotStarted = "session is not started, please run /start"
 
   val decisionDialogStarted =
     s"""hey, %s!
        |make a choice of questionnaire length:
+    """
+
+  val decisionDialogAlreadyExists =
+    s"""
+       |my dear %s, dialog already in progress,
+       |please check my last question
+       |or execute /reset to start from beginning
     """
 
   val questions = Map("location" -> "%s, how far the place can be located?\nyou can reply: 'near', 'far' or 'middle'",

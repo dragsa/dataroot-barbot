@@ -89,7 +89,7 @@ class ClientCachingActor(implicit config: Config, db: Database)
             }).keys.toSeq
             (bars.map(_.id.get) diff cachedTargets.cacheValue.keys.toSeq) ++ currentlyWatched
           }
-          log.debug(s"currently next targets are eligible for selection algorithm:\n ${cachePrettyFormat(cachedTargets.eligible)}")
+          log.info(s"currently next targets are eligible for selection algorithm:\n ${cachePrettyFormat(cachedTargets.eligible)}")
           val targetsReadyForRefresh = bars.filter(bar => cachedTargetsReadyForRefresh.contains(bar.id.get))
           log.debug(s"active targets in database:\n ${iterableIdsPrettyFormat(bars.map(_.id.get))}")
           log.debug(s"active targets in cache:\n ${iterableIdsPrettyFormat(cachedTargetsReadyForRefresh)}")

@@ -67,11 +67,12 @@ object BotUserActor {
 
 class BotUserActor(userId: String, cachingActor: ActorRef)(implicit config: Config, db: Database) extends FSM[State, Data] with ActorLogging {
 
-  // TODO remove blocking code in favor of DB access faliures
+  // TODO remove blocking code in favor of DB access failures
   // not that flexible, but avoiding separate threads in replies to parent is mandatory
   val actualFlows = Await.result(db.flowRepository.getAll, Duration.Inf)
 
   import scala.collection.JavaConverters._
+
   val priorities = config.getObject("bot.priorities").unwrapped().asScala.toMap.map { case (k, v) => (k, v.asInstanceOf[Int]) }
 
   startWith(StateIdle, DataEmpty)
@@ -83,12 +84,23 @@ class BotUserActor(userId: String, cachingActor: ActorRef)(implicit config: Conf
         EventQuestion((String.format(decisionDialogStarted, getUserFirstName) +
           (actualFlows.map(f => "|" + f.name + " -> " + f.description) mkString "\n")).stripMargin)
       }
+
+    case Event(RequestResetSuggestion(msg), _) =>
+      implicit val msgRef = msg
+      goto(StateIdle) using DataEmpty replying EventReset(sessionRestartedInIdle + "\n\n" +
+        String.format(sessionStarted, getUserFirstName).stripMargin)
   }
 
   when(StateDialog) {
+    case Event(RequestInitSuggestion(msg), _) =>
+      implicit val msgRef = msg
+      stay replying EventError(String.format(decisionDialogAlreadyExists, getUserFirstName).stripMargin)
+
     case Event(RequestResetSuggestion(msg), _) =>
       implicit val msgRef = msg
-      goto(StateIdle) using DataEmpty replying EventReset("reset text")
+      goto(StateDialog) using DataEmpty replying EventReset(sessionRestartedInDialog + "\n\n" +
+        (String.format(decisionDialogStarted, getUserFirstName) +
+        (actualFlows.map(f => "|" + f.name + " -> " + f.description) mkString "\n")).stripMargin)
 
     case Event(RequestPayload(msg), DataEmpty) =>
       // first step in dialog - flow choice should be made
@@ -121,7 +133,13 @@ class BotUserActor(userId: String, cachingActor: ActorRef)(implicit config: Conf
   when(StateDecision) {
     case Event(RequestResetSuggestion(msg), _) =>
       implicit val msgRef = msg
-      goto(StateIdle) using DataEmpty replying EventReset("reset text")
+      goto(StateDialog) using DataEmpty replying EventReset(sessionRestartedInDialog + "\n\n" +
+        (String.format(decisionDialogStarted, getUserFirstName) +
+          (actualFlows.map(f => "|" + f.name + " -> " + f.description) mkString "\n")).stripMargin)
+
+    case Event(RequestInitSuggestion(msg), _) =>
+      implicit val msgRef = msg
+      stay replying EventError(String.format(decisionDialogAlreadyExists, getUserFirstName).stripMargin)
 
     case Event(CachingActorCache(cache), DataDecision(msg, dialogHistory)) =>
       implicit val msgRef = msg
@@ -129,12 +147,13 @@ class BotUserActor(userId: String, cachingActor: ActorRef)(implicit config: Conf
       log.info(s"got next cache from sibling:\n $cache")
       // TODO decision calculation here
       val barSortedByWeight = cache.map(barEvaluator).sortBy(_._1)
-      context.parent ! barSortedByWeight
+      context.parent ! EventDecisionMade(barSortedByWeight.toString)
       stay
   }
 
-  def barEvaluator(barState: BarStateMessage)(implicit dialogHistory: Map[String, (String, Int)]): (Double, String, String) = {
-    (dialogHistory.getOrElse("location", ("default", 0))._2.toDouble, barState.name, barState.site)
+  private def barEvaluator(barState: BarStateMessage)(implicit dialogHistory: Map[String, (String, Int)]): (Double, String, String) = {
+    val locationFromDialog = dialogHistory.getOrElse("location", ("default", 0))
+    ((if (barState.location == locationFromDialog._1) locationFromDialog._2 else 0).toDouble, barState.name, barState.site)
   }
 
   onTransition {

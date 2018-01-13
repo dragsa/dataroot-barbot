@@ -198,7 +198,9 @@ class BotDispatcherActor(cachingActor: ActorRef)(implicit config: Config, db: Da
 
     case eError@EventError(text) => reply(text)(eError.msg)
 
-    case eReset@EventReset(_) => reply(String.format(sessionStarted, getUserFullName(eReset.msg)).stripMargin)(eReset.msg)
+    case eReset@EventReset(text) => reply(text)(eReset.msg)
+
+    case eDecision@EventDecisionMade(text) => reply(text)(eDecision.msg)
 
     case Terminated(child) => log.debug(s"user actor ${child.path.name} was terminated")
 
