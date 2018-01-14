@@ -10,6 +10,10 @@ accessible via
 
 `t.me/bar_crawler_bot`
 
+demo of usage
+
+`vimeo.com/251073944`
+
 _available features:_
 
 - at its core system is not something gradually destroying one's liver, rather a sort of a decision making engine;
