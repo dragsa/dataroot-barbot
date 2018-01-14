@@ -169,7 +169,7 @@ class BotDispatcherActor(cachingActor: ActorRef)(implicit config: Config, db: Da
             reply(String.format(commandNotAccepted, msg.text.getOrElse("")))
           case None =>
             log.debug(s"$getUserFullName: entity ${msg.text.getOrElse("")} is known!")
-            reply(String.format(commandAccepted, msg.text.getOrElse("")))
+          // reply(String.format(commandAccepted, msg.text.getOrElse("")))
         }
       // proceed if plain non-empty text message and session is established
       case None => for {

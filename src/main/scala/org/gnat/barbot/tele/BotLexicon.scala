@@ -52,4 +52,6 @@ object BotLexicon {
     "wine" -> "%s, what kind of wine do you prefer?\nrumors are that you can find: 'red dry', 'white dry', 'red semi-sweet', 'white sweet'",
     "cuisine" -> "%s, what is your favorite cuisine?\nchoices are: 'italian', 'european', 'czech', 'jewish'",
     "default" -> "%s, how are you? we are fixing issue on server side...")
+
+  val noTargetMatched = "%s, there are no targets according to your criterias, should we call /reset and start from the very beginning?"
 }

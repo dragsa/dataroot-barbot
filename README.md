@@ -6,6 +6,10 @@ telegram chat bot capable of suggesting most suitable bar for this evening’s "
 decision is provided in a form of a sorted list, making sure there are vacant places, preferred selection of drinks/food available too.
 optionally bot should be able to book a table.
 
+accessible via
+
+`t.me/bar_crawler_bot`
+
 _available features:_
 
 - at its core system is not something gradually destroying one's liver, rather a sort of a decision making engine;

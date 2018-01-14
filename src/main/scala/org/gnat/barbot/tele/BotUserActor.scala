@@ -8,6 +8,7 @@ import org.gnat.barbot.http.BarStateMessage
 import org.gnat.barbot.http.ClientCachingActor.{CachingActorCache, CachingActorProvideCache}
 import org.gnat.barbot.tele.BotLexicon._
 import org.gnat.barbot.tele.BotUserActor._
+import org.joda.time.{Interval, LocalDate, LocalDateTime, LocalTime}
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
@@ -41,9 +42,12 @@ object BotUserActor {
                         routineStepsLeft: List[String],
                         dialogHistory: Map[String, String]) extends Data
 
-  case class DataDecision(msg: Message, dialogResultWithWeights: Map[String, (String, Int)]) extends Data
+  case class DataDecision(msg: Message, dialogResultWithWeights: Map[String, String]) extends Data
 
   // outgoing events
+  // no real need for different events as of now
+  // there is no FSM on dispatcher side, just pass through of text to user
+  // but keeping it as it is
   sealed trait Event
 
   case class EventQuestion(text: String)(implicit val msg: Message) extends Event
@@ -58,10 +62,6 @@ object BotUserActor {
 
   def props(userId: String, cachingActor: ActorRef)(implicit config: Config, db: Database) = Props(new BotUserActor(userId, cachingActor))
 
-  import scala.reflect.runtime.universe._
-  val barFields = typeOf[BarStateMessage].members.collect {
-    case m: MethodSymbol if m.isCaseAccessor => m
-  }.toList.map(_.toString.drop("value ".length))
 }
 
 /* User actor which should:
@@ -78,7 +78,9 @@ class BotUserActor(userId: String, cachingActor: ActorRef)(implicit config: Conf
 
   import scala.collection.JavaConverters._
 
-  val priorities = config.getObject("bot.priorities").unwrapped().asScala.toMap.map { case (k, v) => (k, v.asInstanceOf[Int]) }
+  val prioritiesConfiguration = config.getObject("bot.factor-priorities").unwrapped().asScala.toMap.map { case (k, v) => (k, v.asInstanceOf[Int]) }
+  val functionsConfiguration = config.getObject("bot.factor-functions").unwrapped().asScala.toMap.map { case (k, v) => (k, v.asInstanceOf[String]) }
+  val provideZeroValueTargets = config.getBoolean("bot.zero-value-targets")
 
   startWith(StateIdle, DataEmpty)
 
@@ -126,9 +128,8 @@ class BotUserActor(userId: String, cachingActor: ActorRef)(implicit config: Conf
       // Option.get is safe here - no empty inputs are propagated due to DispatcherActor logic in front
       implicit val msgRef = msg
       if (stepsLeft.length == 1) {
-        goto(StateDecision) using DataDecision(msg, (history + (stepsLeft.head -> msg.text.get)).map {
-          case (k, v) => k -> (v, priorities(k))
-        }) replying EventQuestionEnd(s"calculating, please be patient...")
+        goto(StateDecision) using DataDecision(msg, history + (stepsLeft.head -> msg.text.get)) replying
+          EventQuestionEnd(s"calculating, please be patient...")
       } else {
         goto(StateDialog) using dd.copy(flow, stepsLeft.tail, history + (stepsLeft.head -> msg.text.get)) replying
           EventQuestion(String.format(questions(stepsLeft.tail.head), getUserFirstName))
@@ -149,29 +150,70 @@ class BotUserActor(userId: String, cachingActor: ActorRef)(implicit config: Conf
     case Event(CachingActorCache(cache), DataDecision(msg, dialogHistory)) =>
       implicit val msgRef = msg
       log.info(s"got next cache from sibling:\n $cache")
-      // TODO decision calculation here
-      val barSortedByWeight = cache.map(barEvaluator(_, dialogHistory)).sortBy(_._1)
+      val barSortedByWeight = cache.map(barEvaluator(_, dialogHistory))
+        .filter(bar => if (provideZeroValueTargets) bar._1 >= 0.0 else bar._1 > 0.0)
+        .sortBy(_._1)
         .reverse.map(bar => s"score: ${bar._1}, bar: ${bar._2}, site: ${bar._3}")
-      context.parent ! EventDecisionMade(barSortedByWeight mkString "\n")
+      context.parent ! EventDecisionMade(if (barSortedByWeight.isEmpty) String.format(noTargetMatched, getUserFirstName) else barSortedByWeight mkString "\n")
       stay
   }
 
-  private def barEvaluator(barState: BarStateMessage, dialogHistory: Map[String, (String, Int)]): (Double, String, String) = {
-//    val barParametersFromUser = barFields.filter(dialogHistory.keys.toList.contains(_))
-    val locationFromDialog = dialogHistory.getOrElse("location", ("default", 0))
-    ((if (barState.location == locationFromDialog._1) locationFromDialog._2 else 0).toDouble, barState.name, barState.site)
-  }
+  private def barEvaluator(barState: BarStateMessage, dialogHistory: Map[String, String]): (Double, String, String) = {
+    //    val barParametersFromUser = barFields.filter(dialogHistory.keys.toList.contains(_))
+    val weights = dialogHistory.map {
+      // TODO parameters validation done during input collection should exclude any parsing issues
+      case (entityName, entityCollectedValue) => (entityName, (entityName match {
+        case "location" => if (barState.location == entityCollectedValue) 1 else 0
+          // TODO openHours is not yet supported
+        case "openHours" => {
 
-  private def weightFuncation(weightTuple: (String, Int)) = {
-    weightTuple._1 match {
-      case "default" => weightTuple._2.toDouble
-      case "location" =>
-      case "openHours" =>
-      case "placesAvailable" =>
-      case "cuisine" =>
-      case "wine" =>
-      case "beer" =>
+          val (targetStartTime, targetStopTime) = {
+            val times = barState.openHours.split("-").map(a => LocalTime.parse(a))
+            (times.head, times.tail.head)
+          }
+          val startLocalDate = new LocalDate()
+          val stopLocalDate = if (targetStopTime.isBefore(targetStartTime)) startLocalDate.plusDays(1) else startLocalDate
+
+          val targetLDTStart = new LocalDateTime(startLocalDate.getYear, startLocalDate.getMonthOfYear, startLocalDate.getDayOfMonth,
+            targetStartTime.getHourOfDay, targetStartTime.getMinuteOfHour, targetStartTime.getSecondOfMinute)
+          val targetLDTStop = new LocalDateTime(stopLocalDate.getYear, stopLocalDate.getMonthOfYear, stopLocalDate.getDayOfMonth,
+            targetStopTime.getHourOfDay, targetStopTime.getMinuteOfHour, targetStopTime.getSecondOfMinute)
+
+          val targetInterval = new Interval(targetLDTStart.toDateTime, targetLDTStop.toDateTime)
+          println(targetInterval)
+
+          val (requestedStartTime, requestedStopTime) = {
+            val times = entityCollectedValue.split("-").map(a => LocalTime.parse(a))
+            (times.head, times.tail.head)
+          }
+          val requestedLDTStart = new LocalDateTime(startLocalDate.getYear, startLocalDate.getMonthOfYear, startLocalDate.getDayOfMonth,
+            requestedStartTime.getHourOfDay, requestedStartTime.getMinuteOfHour, requestedStartTime.getSecondOfMinute)
+          val requestedLDTStop = new LocalDateTime(stopLocalDate.getYear, stopLocalDate.getMonthOfYear, stopLocalDate.getDayOfMonth,
+            requestedStopTime.getHourOfDay, requestedStopTime.getMinuteOfHour, requestedStopTime.getSecondOfMinute)
+
+          val requestedInterval = new Interval(requestedLDTStart.toDateTime, requestedLDTStop.toDateTime)
+          println(requestedInterval)
+
+          1
+        }
+        case "placesAvailable" => if (barState.placesAvailable >= Integer.parseInt(entityCollectedValue)) 1 else 0
+        case "cuisine" => if (barState.cuisine.contains(entityCollectedValue)) 1 else 0
+        case "wine" => if (barState.wineList.contains(entityCollectedValue)) 1 else 0
+        case "beer" => if (barState.beersList.contains(entityCollectedValue)) 1 else 0
+      }).toDouble * prioritiesConfiguration(entityName))
     }
+
+    val (addFactors, multFactors) = weights.partition { case (name, _) => functionsConfiguration(name) == "or" }
+    log.debug(s"\n for target:\n\t$barState\n with dialog inputs:\n\t(${dialogHistory mkString ", "})\n OR factors:\n\t$addFactors\n AND factors:\n\t$multFactors")
+    // matching is not really needed here, but in case of any further partitioning keeping as is
+    val addFactorsApplied = addFactors.foldLeft(0.0)((result: Double, weight: (String, Double)) => functionsConfiguration(weight._1) match {
+      case "or" => result + weight._2
+    })
+    // matching is not really needed here, but in case of any further partitioning keeping as is
+    val multFactorsApplied = multFactors.foldLeft(addFactorsApplied)((result: Double, weight: (String, Double)) => functionsConfiguration(weight._1) match {
+      case "and" => result * weight._2
+    })
+    (multFactorsApplied, barState.name, barState.site)
   }
 
   onTransition {

@@ -41,3 +41,13 @@ def classAccessors[T: TypeTag]: List[MethodSymbol] = typeOf[T].members.collect {
 }.toList
 
 classAccessors[BarStateMessage]
+
+val functionsConfiguration = Map("test" -> "add", "new" -> "add")
+
+val test = (result: Double, weight: (String, Double)) => functionsConfiguration(weight._1) match {
+  case _ => result + weight._2
+}
+
+val weigths = Map("locations" -> 3.0, "guests" -> 1.0)
+weigths.foldLeft(0.0)(test)
+
