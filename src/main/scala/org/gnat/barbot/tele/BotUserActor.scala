@@ -149,7 +149,7 @@ class BotUserActor(userId: String, cachingActor: ActorRef)(implicit config: Conf
 
     case Event(CachingActorCache(cache), DataDecision(msg, dialogHistory)) =>
       implicit val msgRef = msg
-      log.info(s"got next cache from sibling:\n $cache")
+      log.info(s"got next cache from sibling:\n ${cache mkString "\\n"}")
       val barSortedByWeight = cache.map(barEvaluator(_, dialogHistory))
         .filter(bar => if (provideZeroValueTargets) bar._1 >= 0.0 else bar._1 > 0.0)
         .sortBy(_._1)
@@ -158,55 +158,63 @@ class BotUserActor(userId: String, cachingActor: ActorRef)(implicit config: Conf
       stay
   }
 
+  def booleanToDouble(b: Boolean) = if (b) 1D else 0D
+
   private def barEvaluator(barState: BarStateMessage, dialogHistory: Map[String, String]): (Double, String, String) = {
-    //    val barParametersFromUser = barFields.filter(dialogHistory.keys.toList.contains(_))
     val weights = dialogHistory.map {
-      // TODO parameters validation done during input collection should exclude any parsing issues
+      // TODO parameters validation done during input collection should exclude any parsing issues which might occur in code below
+      // see case Event(RequestPayload(msg), dd@DataDialog(flow, stepsLeft, history))
       case (entityName, entityCollectedValue) => (entityName, (entityName match {
-        case "location" => if (barState.location == entityCollectedValue) 1 else 0
-          // TODO openHours is not yet supported
-        case "openHours" => {
+        case "location" => booleanToDouble(barState.location == entityCollectedValue)
+        case "openHours" =>
+          // start is always today's date both for requestor and target
+          val startDate = new LocalDate()
 
           val (targetStartTime, targetStopTime) = {
             val times = barState.openHours.split("-").map(a => LocalTime.parse(a))
             (times.head, times.tail.head)
           }
-          val startLocalDate = new LocalDate()
-          val stopLocalDate = if (targetStopTime.isBefore(targetStartTime)) startLocalDate.plusDays(1) else startLocalDate
-
-          val targetLDTStart = new LocalDateTime(startLocalDate.getYear, startLocalDate.getMonthOfYear, startLocalDate.getDayOfMonth,
+          val targetStopDate = if (targetStopTime.isBefore(targetStartTime)) startDate.plusDays(1) else startDate
+          val targetStartLdt = new LocalDateTime(startDate.getYear, startDate.getMonthOfYear, startDate.getDayOfMonth,
             targetStartTime.getHourOfDay, targetStartTime.getMinuteOfHour, targetStartTime.getSecondOfMinute)
-          val targetLDTStop = new LocalDateTime(stopLocalDate.getYear, stopLocalDate.getMonthOfYear, stopLocalDate.getDayOfMonth,
+          val targetStopLdt = new LocalDateTime(targetStopDate.getYear, targetStopDate.getMonthOfYear, targetStopDate.getDayOfMonth,
             targetStopTime.getHourOfDay, targetStopTime.getMinuteOfHour, targetStopTime.getSecondOfMinute)
-
-          val targetInterval = new Interval(targetLDTStart.toDateTime, targetLDTStop.toDateTime)
-          println(targetInterval)
+          val targetInterval = new Interval(targetStartLdt.toDateTime, targetStopLdt.toDateTime)
+          log.debug(s"target openHours are: $targetInterval")
 
           val (requestedStartTime, requestedStopTime) = {
             val times = entityCollectedValue.split("-").map(a => LocalTime.parse(a))
             (times.head, times.tail.head)
           }
-          val requestedLDTStart = new LocalDateTime(startLocalDate.getYear, startLocalDate.getMonthOfYear, startLocalDate.getDayOfMonth,
+          val requestedStopDate = if (requestedStopTime.isBefore(requestedStartTime)) startDate.plusDays(1) else startDate
+          val requestedStartLdt = new LocalDateTime(startDate.getYear, startDate.getMonthOfYear, startDate.getDayOfMonth,
             requestedStartTime.getHourOfDay, requestedStartTime.getMinuteOfHour, requestedStartTime.getSecondOfMinute)
-          val requestedLDTStop = new LocalDateTime(stopLocalDate.getYear, stopLocalDate.getMonthOfYear, stopLocalDate.getDayOfMonth,
+          val requestedStopLdt = new LocalDateTime(requestedStopDate.getYear, requestedStopDate.getMonthOfYear, requestedStopDate.getDayOfMonth,
             requestedStopTime.getHourOfDay, requestedStopTime.getMinuteOfHour, requestedStopTime.getSecondOfMinute)
+          val requestedInterval = new Interval(requestedStartLdt.toDateTime, requestedStopLdt.toDateTime)
+          log.debug(s"requested openHours are: $requestedInterval")
 
-          val requestedInterval = new Interval(requestedLDTStart.toDateTime, requestedLDTStop.toDateTime)
-          println(requestedInterval)
-
-          1
-        }
-        case "placesAvailable" => if (barState.placesAvailable >= Integer.parseInt(entityCollectedValue)) 1 else 0
-        case "cuisine" => if (barState.cuisine.contains(entityCollectedValue)) 1 else 0
-        case "wine" => if (barState.wineList.contains(entityCollectedValue)) 1 else 0
-        case "beer" => if (barState.beersList.contains(entityCollectedValue)) 1 else 0
-      }).toDouble * prioritiesConfiguration(entityName))
+          // might return null, wrapping in Option
+          val requestedIntervalFulfilment = (Option(requestedInterval.overlap(targetInterval))
+          match {
+            case Some(duration) => duration.toDuration.getStandardMinutes.toDouble
+            case None => 0D
+          }) / requestedInterval.toDuration.getStandardMinutes.toDouble
+          log.debug(s"overlap is ${Option(targetInterval.overlap(requestedInterval))} which covers $requestedIntervalFulfilment of requested")
+          requestedIntervalFulfilment
+        case "placesAvailable" => booleanToDouble(barState.placesAvailable >= Integer.parseInt(entityCollectedValue))
+        case "cuisine" => booleanToDouble(barState.cuisine.contains(entityCollectedValue))
+        case "wine" => booleanToDouble(barState.wineList.contains(entityCollectedValue))
+        case "beer" => booleanToDouble(barState.beersList.contains(entityCollectedValue))
+      }) * prioritiesConfiguration(entityName))
     }
+
+
 
     val (addFactors, multFactors) = weights.partition { case (name, _) => functionsConfiguration(name) == "or" }
     log.debug(s"\n for target:\n\t$barState\n with dialog inputs:\n\t(${dialogHistory mkString ", "})\n OR factors:\n\t$addFactors\n AND factors:\n\t$multFactors")
     // matching is not really needed here, but in case of any further partitioning keeping as is
-    val addFactorsApplied = addFactors.foldLeft(0.0)((result: Double, weight: (String, Double)) => functionsConfiguration(weight._1) match {
+    val addFactorsApplied = addFactors.foldLeft(config.getDouble("bot.base-factor-priority"))((result: Double, weight: (String, Double)) => functionsConfiguration(weight._1) match {
       case "or" => result + weight._2
     })
     // matching is not really needed here, but in case of any further partitioning keeping as is

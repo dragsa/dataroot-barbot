@@ -145,7 +145,7 @@ class BotDispatcherActor(cachingActor: ActorRef)(implicit config: Config, db: Da
     reply(String.format(sessionNotStarted, getUserFullName))
   }
 
-  // TODO implmnent history of visits, another major feature touching most of the components
+  // TODO implement history of visits, another major feature touching most of the components
   // with parameters to control:
   // - how many records
   // - sorting by
