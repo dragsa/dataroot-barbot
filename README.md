@@ -23,11 +23,7 @@ _available features:_
 - at its core system is not something gradually destroying one's liver, rather a sort of a decision making engine;
 - it is assumed that bars eligible for selection are able to provide some public web page with the necessary information 
   in form of JSON (like working hours, vacant places, booking capabilities), i.e. follow some defined protocol;
-  there is mock web service for dev purposes provided simulating a couple of bars;
-  samples of such JSON are provided in
-  
-  `docker/bars.json`
-  
+  there is mock web service for dev purposes provided simulating a couple of bars; 
 - another mandatory step for a bar to be considered as possible ‘target’ - registration via public API provided by the bot;
 - bot is capable of maintaining different degree of questionnaires based on user's request:
   from very basic (for fast selection, e.g. "beer, now, fast, 6 people") to a very detailed (if the number of factors considered by the user is big);
@@ -61,9 +57,17 @@ _features to be implemented:_
 in production BarBot operates in single container which hosts database and public accessible endpoint.
 via this port bars interested to become targets should register itself.
 registration requires address of public available web part which hosts bar parameters in form of JSON.
+samples of such JSON are provided in
+  
+`docker-compose/bars.json`
+
 after start BarBot will periodically query that page to keep bar state up-to-date during decision making.
 depending on replies from bar web servers bot may temporary exclude bars from potential targets list.
 also exclusion until re-registration is done possible.
+
+production image resides on
+
+`dragsasgard/postgres_96_with_hls`
 
 
 **Local development setup instructions**
@@ -94,8 +98,9 @@ or using samples of Postman exports provided in
 
 **Production simulation instructions**
 
-for production simulation instraction there is need to execute
+for production simulation there is need to execute
 
 `docker-compos -f docker-compose/docker-compose-production-simultion.yaml up`
  
 which will do the job.
+again fake bars are provided via additional container, but there is no need to register anything - it works out-of-the-box.
