@@ -11,14 +11,5 @@ done
 psql --command "CREATE USER pguser WITH SUPERUSER PASSWORD 'pguser';"
 psql --command "CREATE DATABASE pgdb;"
 psql --command "GRANT ALL PRIVILEGES ON DATABASE pgdb TO pguser;"
-psql --comand "CREATE TABLE bars
-               (name varchar(100) not null
-               		constraint bars_name_key
-               			unique,
-               	info_source varchar not null,
-               	is_active boolean not null,
-               	id serial not null
-               		constraint bars_pkey
-               			primary key
-               );"
-psql -U pguser -d pgdb -a -f /a_bars_table_inserts.sql
+
+psql -U pguser -d pgdb -a -f /app/bar-table-inserts.sql

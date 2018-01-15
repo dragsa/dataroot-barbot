@@ -3,7 +3,7 @@ FROM ubuntu
 MAINTAINER to.gnatuk@gmail.com
     ## install Java
 RUN apt-get update && \
-    apt-get install -y software-properties-common python-software-properties && \
+    apt-get install -y iputils-ping software-properties-common python-software-properties && \
     echo oracle-java8-installer shared/accepted-oracle-license-v1-1 select true | debconf-set-selections && \
     add-apt-repository -y ppa:webupd8team/java && \
     apt-get update && \
@@ -33,7 +33,7 @@ RUN cd /temp/postgres_9.6/sources && gunzip postgresql-9.6.6.tar.gz && tar xf po
 	chown postgres /usr/local/pgsql/data
 
 COPY ./init.sh /init.sh
-COPY ./a_bars_table_inserts.sql /a_bars_table_inserts.sql
+COPY ./bar_table_inserts.sql /app/bar-table-inserts.sql
 COPY ./barbot-assembly-0.1.jar /app/barbot-assembly-0.1.jar
 COPY ./wrapper.sh /wrapper.sh
 RUN chmod +x /init.sh && chown postgres /init.sh && chmod +x /wrapper.sh && mkdir /tmp/data/

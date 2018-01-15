@@ -1,1 +1,3 @@
 docker build -t dragsasgard/postgres_96_with_barbot .
+docker-compose -f docker-compose/docker-compose-develop.yaml up
+docker-compose -f docker-compose/docker-compose-production-simulator.yaml up -d

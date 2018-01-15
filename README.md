@@ -1,4 +1,4 @@
-**BarBot application features**
+**BarBot application**
 
 _TL; DR and resources links_
 
@@ -24,6 +24,10 @@ _available features:_
 - it is assumed that bars eligible for selection are able to provide some public web page with the necessary information 
   in form of JSON (like working hours, vacant places, booking capabilities), i.e. follow some defined protocol;
   there is mock web service for dev purposes provided simulating a couple of bars;
+  samples of such JSON are provided in
+  
+  `docker/bars.json`
+  
 - another mandatory step for a bar to be considered as possible ‘target’ - registration via public API provided by the bot;
 - bot is capable of maintaining different degree of questionnaires based on user's request:
   from very basic (for fast selection, e.g. "beer, now, fast, 6 people") to a very detailed (if the number of factors considered by the user is big);
@@ -52,31 +56,46 @@ _features to be implemented:_
    e.g. recognizing beer type by picture and finding nearest bar serving this type).
 
 
-**Local execution instructions**
+**Production scenario description**
 
-In order to operate properly BarBot needs sources of data. Local development env uses fake bars and those are provided via containers.
-Steps to setup dev env:
+in production BarBot operates in single container which hosts database and public accessible endpoint.
+via this port bars interested to become targets should register itself.
+registration requires address of public available web part which hosts bar parameters in form of JSON.
+after start BarBot will periodically query that page to keep bar state up-to-date during decision making.
+depending on replies from bar web servers bot may temporary exclude bars from potential targets list.
+also exclusion until re-registration is done possible.
+
+
+**Local development setup instructions**
+
+in order to operate properly BarBot needs sources of bar data.
+local development env uses fake bars and those are provided via additional container.
+
+steps to setup dev env:
 - start docker compose:
 
   `docker-compos -f docker-compose/docker-compose-develop.yaml up`
   
-  this includes database and fake bars server running on some_IP:8080;
-  this fake server is just a JSON serving entity which has 3 different resources to simulate real-life different IP addresses;
+  this includes database and fake bars server running on some_IP:8080; on *nux it will be localhost and on Win - dedicated IP; 
+  fake server is just a JSON serving entity which has 5 different resources to simulate real-life different IP addresses;
 - start BarBot;
   this step will init database with some default values (like 2 basic types of questionnaire);
 - register fake bars via BarBot register API;
-  fake bars are not inserted by barbot application during startup intentionally as this is external source.
+  fake bars are not inserted by BarBot application during startup intentionally as this is external source simulation.
+  
+bars can be inserted either using INSERT statements part from
 
-unfortunately, given the way docker is implemented on Windows platform there seems to be no way to provide
-registration data as plain SQL inserts because IP addresses are different on each deployment.
+`docker-compose/bar-table-inserts-develop.sql`
 
-samples to register using Postman export are provided in project as
+or using samples of Postman exports provided in
 
-`dataroot-barbot-public.postman_collection.json`
-
-for each bar entry IP address in attribute "locationUrl" should be changed to point to the one on which fake bars server is running.
+`docker-compose/dataroot-barbot-public.postman_collection.json`
 
 
-**Production installation instructions**
+**Production simulation instructions**
 
-TODO
+for production simulation instraction there is need to execute
+
+`docker-compos -f docker-compose/docker-compose-production-simultion.yaml up`
+ 
+which will do the job.

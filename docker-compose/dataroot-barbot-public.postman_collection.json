@@ -21,7 +21,7 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n\t\"name\": \"Staromak\",\r\n\t\"locationUrl\": \"http://192.168.99.100:8888/Staromak\"\r\n}"
+					"raw": "{\r\n  \"name\": \"Staromak\",\r\n  \"locationUrl\": \"http://bars:80/Staromak\"\r\n}"
 				},
 				"description": null
 			},
@@ -41,7 +41,7 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n\t\"name\": \"PD1\",\r\n\t\"locationUrl\": \"http://192.168.99.100:8888/PD1\"\r\n}"
+					"raw": "{\r\n  \"name\": \"PD1\",\r\n  \"locationUrl\": \"http://bars:80/PD1\"\r\n}"
 				},
 				"description": null
 			},
@@ -55,13 +55,12 @@
 				"header": [
 					{
 						"key": "Content-Type",
-						"value": "application/json",
-						"description": ""
+						"value": "application/json"
 					}
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n\t\"name\": \"PD2\",\r\n\t\"locationUrl\": \"http://192.168.1.1:8888/PD2\"\r\n}"
+					"raw": "{\r\n  \"name\": \"PD2\",\r\n  \"locationUrl\": \"http://192.168.1.1:8888/PD2\"\r\n}"
 				},
 				"description": null
 			},
@@ -81,7 +80,7 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n\t\"name\": \"PD3\",\r\n\t\"locationUrl\": \"http://192.168.99.100:8888/PD3\"\r\n}"
+					"raw": "{\r\n  \"name\": \"PD3\",\r\n  \"locationUrl\": \"http://bars:80/PD3\"\r\n}"
 				},
 				"description": null
 			},
@@ -101,7 +100,7 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n\t\"name\": \"Error\",\r\n\t\"locationUrl\": \"http://192.168.99.100:8888/Error\"\r\n}"
+					"raw": "{\r\n  \"name\": \"Error\",\r\n  \"locationUrl\": \"http://bars:80/Error\"\r\n}"
 				},
 				"description": null
 			},

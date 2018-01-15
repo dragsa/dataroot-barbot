@@ -11,29 +11,46 @@ import org.gnat.barbot.tele.BotDispatcherActor
 
 import scala.io.StdIn
 
-object Server extends App with ServerApiRouter with LazyLogging {
+object Server extends ServerApiRouter with LazyLogging {
 
-  implicit val system = ActorSystem("barbot-system")
-  implicit val materializer = ActorMaterializer()
-  implicit val executionContext = system.dispatcher
-  implicit val dbRef = this
+  @volatile var keepRunning = true
 
-  val serverConfig = ConfigFactory.load().getConfig("barbot.server")
-  val host = serverConfig.getString("host")
-  val port = serverConfig.getInt("port")
+  def main(args: Array[String]) {
+    implicit val system = ActorSystem("barbot-system")
+    implicit val materializer = ActorMaterializer()
+    implicit val executionContext = system.dispatcher
+    implicit val dbRef = this
 
-  val bindingFuture = Http().bindAndHandle(route, host, port)
+    val serverConfig = ConfigFactory.load().getConfig("barbot.server")
+    val host = serverConfig.getString("host")
+    val port = serverConfig.getInt("port")
 
-  implicit val barbotConfig = ConfigFactory.load().getConfig("barbot")
-  val barCachingActor = system.actorOf(ClientCachingActor.props, name = "client-caching-actor")
-  val barCrawlerBotActor = system.actorOf(BotDispatcherActor.props(barCachingActor), name = "bar-crawler-dispatcher-actor")
+    val bindingFuture = Http().bindAndHandle(route, host, port)
 
-  initDatabase
-  barCachingActor ! CachingActorStart
+    implicit val barbotConfig = ConfigFactory.load().getConfig("barbot")
+    val barCachingActor =
+      system.actorOf(ClientCachingActor.props, name = "client-caching-actor")
+    val barCrawlerBotActor = system.actorOf(
+      BotDispatcherActor.props(barCachingActor),
+      name = "bar-crawler-dispatcher-actor")
 
-  logger.info("Started server, press enter to stop")
-  StdIn.readLine()
-  bindingFuture
-    .flatMap(_.unbind())
-    .onComplete(_ => system.terminate())
+    initDatabase
+    barCachingActor ! CachingActorStart
+
+    logger.info("started server, waiting for SIGTERM to stop")
+    val mainThread = Thread.currentThread ()
+    Runtime.getRuntime.addShutdownHook (new Thread () {
+      override def run = {
+        logger.info("inside shutDownHook handler")
+        keepRunning = false
+        mainThread.join ()
+        bindingFuture
+          .flatMap(_.unbind())
+          .onComplete(_ => system.terminate())
+      }
+    })
+    while (keepRunning) {
+    }
+    logger.info("stopping server")
+  }
 }
