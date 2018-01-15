@@ -1,0 +1,13 @@
+version: '3'
+services:
+  bars:
+    image: clue/json-server
+    volumes:
+     - ./bars.json:/data/db.json
+    ports:
+     - "8888:80"
+  barbot-db:
+    image: dragsasgard/postgres_96_with_barbot
+    ports:
+     - "5432:5432"
+     - "8080:8080"

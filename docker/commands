@@ -1,0 +1,1 @@
+docker build -t dragsasgard/postgres_96_with_barbot .

@@ -16,3 +16,5 @@ libraryDependencies ++= Seq(
   "info.mukel" %% "telegrambot4s" % "3.0.14",
   "joda-time" % "joda-time" % "2.9.9"
 )
+
+assemblyOutputPath in assembly := file(Option("docker/").getOrElse("") + "barbot-assembly-" + version.value + ".jar")
