@@ -33,7 +33,7 @@ RUN cd /temp/postgres_9.6/sources && gunzip postgresql-9.6.6.tar.gz && tar xf po
 	chown postgres /usr/local/pgsql/data
 
 COPY ./init.sh /init.sh
-COPY ./bar_table_inserts.sql /app/bar-table-inserts.sql
+COPY ./bar-table-inserts.sql /app/bar-table-inserts.sql
 COPY ./barbot-assembly-0.1.jar /app/barbot-assembly-0.1.jar
 COPY ./wrapper.sh /wrapper.sh
 RUN chmod +x /init.sh && chown postgres /init.sh && chmod +x /wrapper.sh && mkdir /tmp/data/
