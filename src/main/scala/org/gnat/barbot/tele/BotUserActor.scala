@@ -78,8 +78,14 @@ class BotUserActor(userId: String, cachingActor: ActorRef)(implicit config: Conf
 
   import scala.collection.JavaConverters._
 
-  val prioritiesConfiguration = config.getObject("bot.factor-priorities").unwrapped().asScala.toMap.map { case (k, v) => (k, v.asInstanceOf[Int]) }
-  val functionsConfiguration = config.getObject("bot.factor-functions").unwrapped().asScala.toMap.map { case (k, v) => (k, v.asInstanceOf[String]) }
+  // sensible default values for absent options if this will happen
+  // this combination drops impact of that option to 0
+  val prioritiesConfiguration = config.getObject("bot.factor-priorities").unwrapped()
+    .asScala.toMap.map { case (k, v) => (k, v.asInstanceOf[Int]) }
+    .withDefaultValue(0)
+  val functionsConfiguration = config.getObject("bot.factor-functions").unwrapped()
+    .asScala.toMap.map { case (k, v) => (k, v.asInstanceOf[String]) }
+    .withDefaultValue("or")
   val provideZeroValueTargets = config.getBoolean("bot.zero-value-targets")
 
   startWith(StateIdle, DataEmpty)

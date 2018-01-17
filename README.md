@@ -63,7 +63,8 @@ samples of such JSON are provided in
 
 after start BarBot will periodically query that page to keep bar state up-to-date during decision making.
 depending on replies from bar web servers bot may temporary exclude bars from potential targets list.
-also exclusion until re-registration is done possible.
+also it is possible to exclude bar exclusion until status update will be done from bar side.
+to track it's state from BarBot perspective each bar can use special status endpoint periodically.
 
 production image resides on
 

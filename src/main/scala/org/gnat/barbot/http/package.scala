@@ -1,5 +1,7 @@
 package org.gnat.barbot
 
+import org.gnat.barbot.models.Bar
+
 package object http {
 
   import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
@@ -19,6 +21,7 @@ package object http {
     implicit val registerFormat = jsonFormat2(RegisterMessage)
     implicit val unregisterFormat = jsonFormat1(UnregisterMessage)
     implicit val updateMessage = jsonFormat3(UpdateMessage)
+    implicit val statusMessage = jsonFormat4(Bar)
   }
 
   sealed trait ExternalEventMessage

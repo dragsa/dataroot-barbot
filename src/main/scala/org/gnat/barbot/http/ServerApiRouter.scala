@@ -3,10 +3,10 @@ package org.gnat.barbot.http
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{MalformedRequestContentRejection, RejectionHandler}
-import org.gnat.barbot.models.Bar
 import org.gnat.barbot.Database
+import org.gnat.barbot.models.Bar
 
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Try}
 
 trait ServerApiRouter extends Database with ServerJsonSupport {
 
@@ -77,6 +77,21 @@ trait ServerApiRouter extends Database with ServerJsonSupport {
           }
         }
       }
+    } ~ pathPrefix("status") {
+      pathPrefix(Segment) { existingIdOrNew =>
+        pathEndOrSingleSlash {
+          get {
+            Try(Integer.parseInt(existingIdOrNew)) match {
+              case Success(parsedId) =>
+                import spray.json._
+                onSuccess(barRepository.getOneById(parsedId)) {
+                  case Some(a) => complete(a.toJson)
+                  case None => complete(StatusCodes.NotFound)
+                }
+              case Failure(_) => complete(StatusCodes.NotFound)
+            }
+          }
+        }
+      }
     }
-  // TODO add bar status endpoint via GET and id parameter validation
 }
