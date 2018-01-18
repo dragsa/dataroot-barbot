@@ -13,5 +13,8 @@ package object tele {
 
   def getUserNickName(implicit msg: Message) = msg.from.flatMap(u => u.username)
 
-  def getCompositeUserActorName(implicit msg: Message) = getUserId(msg).getOrElse("default_user_id") + "_for_" + getUserFullName(msg).replaceAll("\\s", "")
+  // TODO use UUID.randomUUID here?
+  def getCompositeUserActorName(implicit msg: Message) = getUserId(msg)
+    .getOrElse("default_user_id") + "_for_" + getUserFullName(msg)
+    .replaceAll("\\s", "")
 }

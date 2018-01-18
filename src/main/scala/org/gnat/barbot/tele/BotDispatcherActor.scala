@@ -7,9 +7,11 @@ import info.mukel.telegrambot4s.api.{Polling, TelegramBot}
 import info.mukel.telegrambot4s.models.{Message, MessageEntityType}
 import org.gnat.barbot.Database
 import org.gnat.barbot.models.User
+import org.gnat.barbot.tele.BotDispatcherActor.Stats
 import org.gnat.barbot.tele.BotLexicon._
 import org.gnat.barbot.tele.BotUserActor._
 
+import scala.concurrent.duration._
 import scala.io.Source
 import scala.util.Success
 
@@ -32,6 +34,11 @@ object BotDispatcherActor {
   }
 
   def commands = BarCrawlerBotCommands.values.map(_.toString).toList
+
+  // internal messages
+  sealed trait DispatcherBotInternal
+
+  case object Stats extends DispatcherBotInternal
 
   def props(cachingActor: ActorRef)(implicit config: Config, db: Database) = Props(new BotDispatcherActor(cachingActor))
 }
@@ -56,6 +63,8 @@ class BotDispatcherActor(cachingActor: ActorRef)(implicit config: Config, db: Da
   //  the most painful debt - move on top of WebHooks implementation
   // as this one leads wo extremely unpleasant user's experience
   override def pollingInterval = botConfig.getInt("polling-interval")
+
+  val statsTimeout = botConfig.getInt("user-actor-session-timeout")
 
   import BotDispatcherActor.commands
 
@@ -184,6 +193,9 @@ class BotDispatcherActor(cachingActor: ActorRef)(implicit config: Config, db: Da
 
   override def preStart = {
     log.debug(s"${self.path.name}, Father of all Bot User Actors is here")
+    if (statsTimeout > 0) {
+      context.system.scheduler.schedule(statsTimeout seconds, statsTimeout seconds, self, Stats)
+    }
     run
   }
 
@@ -192,6 +204,8 @@ class BotDispatcherActor(cachingActor: ActorRef)(implicit config: Config, db: Da
   }
 
   override def receive: Receive = {
+    case Stats => logger.debug(s"I am proud father of these children:\n${context.children.map(_.path.name) mkString "\n"}")
+
     case eQuestion@EventQuestion(text) => reply(text)(eQuestion.msg)
 
     case qQuestionEnd@EventQuestionEnd(text) => reply(text)(qQuestionEnd.msg)
@@ -201,6 +215,8 @@ class BotDispatcherActor(cachingActor: ActorRef)(implicit config: Config, db: Da
     case eReset@EventReset(text) => reply(text)(eReset.msg)
 
     case eDecision@EventDecisionMade(text) => reply(text)(eDecision.msg)
+
+    case eTimeout@EventTimeout(text) => reply(text)(eTimeout.msg)
 
     case Terminated(child) => log.debug(s"user actor ${child.path.name} was terminated")
 

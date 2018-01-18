@@ -1,6 +1,6 @@
 package org.gnat.barbot.tele
 
-import akka.actor.{ActorLogging, ActorRef, FSM, Props}
+import akka.actor.{ActorLogging, ActorRef, Cancellable, FSM, PoisonPill, Props}
 import com.typesafe.config.Config
 import info.mukel.telegrambot4s.models.Message
 import org.gnat.barbot.Database
@@ -10,8 +10,8 @@ import org.gnat.barbot.tele.BotLexicon._
 import org.gnat.barbot.tele.BotUserActor._
 import org.joda.time.{Interval, LocalDate, LocalDateTime, LocalTime}
 
-import scala.concurrent.Await
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration.{Duration, _}
+import scala.concurrent.{Await, ExecutionContext}
 
 object BotUserActor {
 
@@ -60,6 +60,13 @@ object BotUserActor {
 
   case class EventReset(text: String)(implicit val msg: Message) extends Event
 
+  case class EventTimeout(text: String)(implicit val msg: Message) extends Event
+
+  // internal messages
+  sealed trait UserBotInternal
+
+  case object SessionTimeout extends UserBotInternal
+
   def props(userId: String, cachingActor: ActorRef)(implicit config: Config, db: Database) = Props(new BotUserActor(userId, cachingActor))
 
 }
@@ -75,18 +82,23 @@ class BotUserActor(userId: String, cachingActor: ActorRef)(implicit config: Conf
   // TODO remove blocking code in favor of DB access failures
   // not that flexible, but avoiding separate threads in replies to parent is mandatory
   val actualFlows = Await.result(db.flowRepository.getAll, Duration.Inf)
+  val botConfig = config.getConfig("bot")
+  val sessionTimeout = botConfig.getInt("user-actor-session-timeout")
+
+  var timeoutEvent: Option[Cancellable] = None
+  var lastMessage: Option[Message] = None
 
   import scala.collection.JavaConverters._
 
   // sensible default values for absent options if this will happen
   // this combination drops impact of that option to 0
-  val prioritiesConfiguration = config.getObject("bot.factor-priorities").unwrapped()
+  val prioritiesConfiguration = botConfig.getObject("factor-priorities").unwrapped()
     .asScala.toMap.map { case (k, v) => (k, v.asInstanceOf[Int]) }
     .withDefaultValue(0)
-  val functionsConfiguration = config.getObject("bot.factor-functions").unwrapped()
+  val functionsConfiguration = botConfig.getObject("factor-functions").unwrapped()
     .asScala.toMap.map { case (k, v) => (k, v.asInstanceOf[String]) }
     .withDefaultValue("or")
-  val provideZeroValueTargets = config.getBoolean("bot.zero-value-targets")
+  val provideZeroValueTargets = botConfig.getBoolean("zero-value-targets")
 
   startWith(StateIdle, DataEmpty)
 
@@ -216,11 +228,10 @@ class BotUserActor(userId: String, cachingActor: ActorRef)(implicit config: Conf
     }
 
 
-
     val (addFactors, multFactors) = weights.partition { case (name, _) => functionsConfiguration(name) == "or" }
     log.debug(s"\n for target:\n\t$barState\n with dialog inputs:\n\t(${dialogHistory mkString ", "})\n OR factors:\n\t$addFactors\n AND factors:\n\t$multFactors")
     // matching is not really needed here, but in case of any further partitioning keeping as is
-    val addFactorsApplied = addFactors.foldLeft(config.getDouble("bot.base-factor-priority"))((result: Double, weight: (String, Double)) => functionsConfiguration(weight._1) match {
+    val addFactorsApplied = addFactors.foldLeft(botConfig.getDouble("base-factor-priority"))((result: Double, weight: (String, Double)) => functionsConfiguration(weight._1) match {
       case "or" => result + weight._2
     })
     // matching is not really needed here, but in case of any further partitioning keeping as is
@@ -240,8 +251,36 @@ class BotUserActor(userId: String, cachingActor: ActorRef)(implicit config: Conf
       log.info(s"I am ${self.path.name}:\n state is changing\n\t${stateChange._1 + " -> " + stateChange._2}\n current data is $stateData\n next data is\n\t$nextStateData")
   }
 
+  implicit val ec: ExecutionContext = context.dispatcher
+
+  override def receive: Receive = {
+    case SessionTimeout =>
+      log.debug(s"${self.path.name} there was no input from user for $sessionTimeout seconds, my heart is broken")
+      lastMessage.foreach(lm => context.parent ! EventTimeout(sessionStoppedDueTimeout)(lm))
+      self ! PoisonPill
+    case mes =>
+      log.debug(s"${self.path.name} got some input from user, my heart is beating")
+      timeoutEvent.foreach(_.cancel)
+      timeoutEvent = Option(context.system.scheduler.scheduleOnce(sessionTimeout seconds, self, SessionTimeout))
+      mes match {
+        // ugly, but can't bind arg of constructor in case of multi-match
+        // arg is needed for proper reply
+        case RequestInitSuggestion(body) => lastMessageHandler(body)
+        case RequestResetSuggestion(body) => lastMessageHandler(body)
+        case RequestPayload(body) => lastMessageHandler(body)
+        case _ => log.debug(s"last message won't change $lastMessage")
+      }
+      super.receive(mes)
+  }
+
+  private def lastMessageHandler(body: Message) = {
+    lastMessage = Option(body)
+    log.debug(s"last message is now $lastMessage")
+  }
+
   override def preStart = {
-    log.debug(s"${self.path.name} is alive and well")
+    log.debug(s"${self.path.name} got initial input from user, my heart starts beating")
+    timeoutEvent = Option(context.system.scheduler.scheduleOnce(sessionTimeout seconds, self, SessionTimeout))
     super.preStart
   }
 
