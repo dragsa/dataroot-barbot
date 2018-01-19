@@ -4,7 +4,7 @@ _TL; DR and resources links_
 
 telegram chat bot capable of suggesting most suitable bar for this evening’s "getting wasted" party.
 
-decision is provided in a form of a sorted list, making sure there are vacant places, preferred selection of drinks/food available too.
+decision is provided in a form of a sorted list, making sure there are vacant places, preferred selection of drinks and food available too.
 
 optionally bot should be able to book a table.
 
@@ -57,9 +57,10 @@ _features to be implemented:_
 
 ***Production scenario description***
 
-in production BarBot operates as a single container which hosts database and public accessible registration endpoint.
+in production BarBot operates as a single container which hosts database and public accessible registration API.
 using this API bars interested to become targets should register themselves.
 registration requires address of public available web page which hosts bar parameters in form of JSON.
+
 samples of such JSON are provided in
   
 `docker-compose/bars.json`
@@ -67,11 +68,11 @@ samples of such JSON are provided in
 after start BarBot will periodically query that page to keep bar state up-to-date during decision making.
 depending on replies from bar web servers BarBot may temporary exclude bars from potential targets list.
 also it is possible to exclude bar for longer term - until status update will be done from bar side.
-to track it's state from BarBot perspective each bar can use special "status" endpoint periodically.
+to track it's state from BarBot perspective each bar should periodically use special "status" endpoint.
 
 production-ready image resides on
 
-`dragsasgard/postgres_96_with_hls`
+`dragsasgard/postgres_96_with_barbot`
 
 
 ***Local development setup instructions***
@@ -87,7 +88,7 @@ steps to setup dev env:
   this includes database and fake bars server running on "IP:8080"; on *nix it will be "localhost" and on Win - dedicated IP; 
   fake server is just a JSON serving entity which has 5 different resources to simulate real-life different IP addresses;
 - start BarBot;
-  this step will init database with some default values (like 2 basic types of questionnaire);
+  this step will init database with some default entries (like 2 basic types of questionnaire);
 - register fake bars via BarBot register API;
   fake bars are not inserted by BarBot application during startup intentionally as this is external source simulation.
   
