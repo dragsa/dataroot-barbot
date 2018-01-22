@@ -114,6 +114,10 @@ class BotUserActor(userId: String, cachingActor: ActorRef)(implicit config: Conf
       implicit val msgRef = msg
       goto(StateIdle) using DataEmpty replying EventReset(sessionRestartedInIdle + "\n\n" +
         String.format(sessionStarted, getUserFirstName).stripMargin)
+
+    case Event(RequestPayload(msg), _) =>
+      implicit val msgRef = msg
+      stay replying EventError(String.format(sessionStarted, getUserFirstName).stripMargin)
   }
 
   when(StateDialog) {

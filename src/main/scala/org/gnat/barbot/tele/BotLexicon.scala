@@ -17,6 +17,8 @@ object BotLexicon {
 
   val userNotFound = "user is unknown"
 
+  val functionalityNotImplemented = "this command is not yet supported"
+
   val commandNotAccepted = "command %s is not clear to me! please check /help details"
 
   val commandAccepted = "command %s is known and clear, executing..."

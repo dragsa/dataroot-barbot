@@ -160,7 +160,7 @@ class BotDispatcherActor(cachingActor: ActorRef)(implicit config: Config, db: Da
   // - sorting by
   // - sorting order
   onCommandWithHelp("/history")("show history of visits for this user") { implicit msg =>
-    ???
+    reply(functionalityNotImplemented)
   }
 
   // messages effect depends session state in which those are executed
@@ -181,12 +181,11 @@ class BotDispatcherActor(cachingActor: ActorRef)(implicit config: Config, db: Da
           // reply(String.format(commandAccepted, msg.text.getOrElse("")))
         }
       // proceed if plain non-empty text message and session is established
-      case None => for {
-        _ <- msg.text
-        actor <- context.child(getCompositeUserActorName)
-      } yield {
-        //reply(s"echo of message: ${msg.text.getOrElse("default text")}")
-        actor ! RequestPayload(msg)
+      case None => msg.text.foreach { _ =>
+        context.child(getCompositeUserActorName) match {
+          case Some(actor) => actor ! RequestPayload(msg)
+          case None => reply(sessionNotStarted)
+        }
       }
     }
   }
