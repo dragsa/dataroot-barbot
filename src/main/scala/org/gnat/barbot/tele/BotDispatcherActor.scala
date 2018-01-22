@@ -184,7 +184,9 @@ class BotDispatcherActor(cachingActor: ActorRef)(implicit config: Config, db: Da
       case None => msg.text.foreach { _ =>
         context.child(getCompositeUserActorName) match {
           case Some(actor) => actor ! RequestPayload(msg)
-          case None => reply(sessionNotStarted)
+          case None =>
+            log.debug(s"$getUserFullName: input ${msg.text.getOrElse("")} was ignored, session doesn't exist")
+            reply(sessionNotStarted)
         }
       }
     }

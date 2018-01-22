@@ -196,6 +196,7 @@ class BotUserActor(userId: String, cachingActor: ActorRef)(implicit config: Conf
             val times = barState.openHours.split("-").map(a => LocalTime.parse(a))
             (times.head, times.tail.head)
           }
+          // TODO there is definitely a way to simplify this mess
           val targetStopDate = if (targetStopTime.isBefore(targetStartTime)) startDate.plusDays(1) else startDate
           val targetStartLdt = new LocalDateTime(startDate.getYear, startDate.getMonthOfYear, startDate.getDayOfMonth,
             targetStartTime.getHourOfDay, targetStartTime.getMinuteOfHour, targetStartTime.getSecondOfMinute)
