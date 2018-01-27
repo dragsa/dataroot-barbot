@@ -31,7 +31,7 @@ object BotLexicon {
 
   val sessionRestartedInIdle = "session was restarted while no progress made"
 
-  val sessionStoppedDueTimeout = "session was stop due to inactivity timeout, please run /start to initialize it again or /help"
+  val sessionStoppedDueTimeout = "session was stopped due to inactivity timeout, please run /start to initialize it again or /help"
 
   val sessionAlreadyExists = "session already exists, should I /suggest?"
 
