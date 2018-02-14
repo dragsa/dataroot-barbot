@@ -42,6 +42,7 @@ _features to be implemented:_
 - simulate something similar to personal assistance, for this purpose bot should provide special questionnaire allowing to fill in user data;
 - bot should provide possibility to store user's visits and marks into database and a way to search through this history;
 - booking a table (not clear how to approach at this point);
+- order a taxi (Uber API?)
 - provide a way to expand questionnaire list via config in a form of keywords list; 
 - additional decision factors:
 1) geographical location with the help of Google API;
