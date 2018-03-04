@@ -3,6 +3,10 @@ System.nanoTime()
 120000000000L
 System.nanoTime() - 943776208911L
 
+"where id = 123".split("= ")(1)
+" where \"id\" = 123".matches(".* where \"id\" = \\d+$")
+"123".matches("\\d{1,9}")
+
 val firstEncounter =
   s"""Hello, %s!
      | it is the first time we see each other.

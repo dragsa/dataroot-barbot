@@ -2,33 +2,47 @@ package databasemock
 
 import acolyte.jdbc.Implicits._
 import acolyte.jdbc.RowLists._
-import acolyte.jdbc.{AcolyteDSL, Execution, QueryExecution, UpdateExecution, Driver => AcolyteDriver}
+import acolyte.jdbc.{AcolyteDSL, Execution, QueryExecution, RowList4, UpdateExecution, Driver => AcolyteDriver}
 import org.gnat.barbot.models.{Bar, BarRepository}
 import org.specs2.concurrent.ExecutionEnv
 import org.specs2.mutable.Specification
 import slick.jdbc.JdbcBackend.Database
 
+import scala.concurrent.duration._
 
 class BarRepoSpec(implicit ee: ExecutionEnv) extends Specification {
+  sequential
   "Bar Repo persistence test suite" title
 
-  val dummyTable = (rowList4(
+  val schema = rowList4(
     classOf[String] -> "name",
     classOf[String] -> "info_source",
     classOf[Boolean] -> "is_active",
     classOf[Int] -> "id")
-    :+ ("c", "d", false, 1)
-    :+ ("a", "b", false, 2)
-    :+ ("e", "f", false, 3)
-    )
+
+  val standardBarData = List(
+    Bar("Staromak", "http://192.168.99.100:8888/Staromak", true, Some(1)),
+    Bar("PD1", "http://192.168.99.100:8888/PD1", true, Some(2)),
+    Bar("PD2", "http://192.168.1.1:8888/PD2", false, Some(3)),
+    Bar("Error", "http://192.168.99.100:8888/Error", true, Some(4))
+  )
 
   val handler = AcolyteDSL.handleStatement.withQueryDetection(
     "^select ") withQueryHandler { e: QueryExecution ⇒
     if (e.sql.startsWith("select ".toLowerCase)) {
       sqlLogger(e)
-      dummyTable.asResult
+      if (e.sql.contains("\"is_active\" = true")) {
+        appender(schema, standardBarData.filter(_.isActive == true))
+      } else if (e.sql.contains("\"is_active\" = false")) {
+        appender(schema, standardBarData.filter(_.isActive == false))
+      } else if (e.sql.matches(".* where \"id\" = \\d+$")) {
+        appender(schema, standardBarData.filter(_.id.contains(Integer.parseInt(e.sql.split("= ")(1)))))
+      } else if (e.sql.endsWith("\"bars\"")) {
+        appender(schema, standardBarData)
+      } else
+        schema
     } else
-      rowList1(classOf[String]).asResult
+      schema
   } withUpdateHandler { e: UpdateExecution =>
     if (e.sql.startsWith("delete ")) {
       99
@@ -37,6 +51,13 @@ class BarRepoSpec(implicit ee: ExecutionEnv) extends Specification {
       1
     } else {
       0
+    }
+  }
+
+  private def appender(schema: RowList4.Impl[String, String, Boolean, Int], listToAppend: List[Bar]): RowList4.Impl[String, String, Boolean, Int] = {
+    listToAppend match {
+      case Nil => schema
+      case head :: tail => appender(schema.append(head.name, head.infoSource, head.isActive, head.id.get), tail)
     }
   }
 
@@ -50,8 +71,20 @@ class BarRepoSpec(implicit ee: ExecutionEnv) extends Specification {
 
   val barRepo = new BarRepository
 
-  "select 1 bar by Id" in {
-    barRepo.getOneById(3) must beSome(Bar("c", "d", false, Some(1))).await //(timeout = Duration.Inf)
+  "select 1 bar by existing Id" in {
+    barRepo.getOneById(1) must beSome(Bar("Staromak", "http://192.168.99.100:8888/Staromak", true, Some(1))).awaitFor(200.millis)
+  }
+
+  "select 1 bar by non-existing Id" in {
+    barRepo.getOneById(5) must beNone.awaitFor(200.millis)
+  }
+
+  "select all bars" in {
+    barRepo.getAll must haveSize[Seq[Bar]](4).awaitFor(200.millis)
+  }
+
+  "select all active bars" in {
+    barRepo.getAllActive must haveSize[Seq[Bar]](3).awaitFor(200.millis)
   }
 
 }
