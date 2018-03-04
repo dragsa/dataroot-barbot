@@ -55,7 +55,7 @@ object BotDispatcherActor {
 class BotDispatcherActor(cachingActor: ActorRef)(implicit config: Config, db: Database) extends TelegramBot with Polling with Commands with Help with Actor with ActorLogging {
   lazy val token = scala.util.Properties
     .envOrNone("BOT_TOKEN")
-    .getOrElse(Source.fromResource("bot.token").getLines.mkString)
+    .getOrElse(Source.fromInputStream(getClass.getResourceAsStream("/bot.token")).getLines.mkString)
 
   val botConfig = config.getConfig("bot")
 
