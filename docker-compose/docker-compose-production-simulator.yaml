@@ -1,0 +1,16 @@
+version: '3'
+services:
+  bars:
+    image: clue/json-server
+    volumes:
+     - ./bars.json:/data/db.json
+    ports:
+    # 8888 is exposed for checking fake bars data with external tools like Postman, not required
+     - "8888:80"
+  barbot-db:
+    image: dragsasgard/postgres_96_with_barbot
+    ports:
+    # 5432 is exposed for checking DB with external tools, not required
+     - "5432:5432"
+    # for production simulation not required too, in real prod registration API will be there
+     - "8080:8080"

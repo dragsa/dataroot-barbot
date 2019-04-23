@@ -1,0 +1,110 @@
+{
+	"variables": [],
+	"info": {
+		"name": "dataroot-barbot-public",
+		"_postman_id": "c1ec90bc-af42-a60b-0167-5fd80e881fa5",
+		"description": "",
+		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "register 1 bar",
+			"request": {
+				"url": "http://localhost:8080/register",
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"name\": \"Staromak\",\r\n  \"locationUrl\": \"http://bars:80/Staromak\"\r\n}"
+				},
+				"description": null
+			},
+			"response": []
+		},
+		{
+			"name": "register 2 bar",
+			"request": {
+				"url": "http://localhost:8080/register",
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"name\": \"PD1\",\r\n  \"locationUrl\": \"http://bars:80/PD1\"\r\n}"
+				},
+				"description": null
+			},
+			"response": []
+		},
+		{
+			"name": "register 3 bar NOT RESPONDING",
+			"request": {
+				"url": "http://localhost:8080/register",
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"name\": \"PD2\",\r\n  \"locationUrl\": \"http://192.168.1.1:8888/PD2\"\r\n}"
+				},
+				"description": null
+			},
+			"response": []
+		},
+		{
+			"name": "register 4 bar NOT EXISTING",
+			"request": {
+				"url": "http://localhost:8080/register",
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"name\": \"PD3\",\r\n  \"locationUrl\": \"http://bars:80/PD3\"\r\n}"
+				},
+				"description": null
+			},
+			"response": []
+		},
+		{
+			"name": "register 4 bar BAD CONTENT",
+			"request": {
+				"url": "http://localhost:8080/register",
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"name\": \"Error\",\r\n  \"locationUrl\": \"http://bars:80/Error\"\r\n}"
+				},
+				"description": null
+			},
+			"response": []
+		}
+	]
+}

@@ -39,3 +39,4 @@ pubsub/target
 .idea
 
 project/project/
+docker/barbot-assembly-0.1.jar

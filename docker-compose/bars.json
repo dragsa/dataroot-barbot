@@ -1,0 +1,63 @@
+{
+  "PD1": {
+    "name": "Pivnaya Duma 1",
+    "location": "near",
+    "openHours": "11:00-23:30",
+    "placesAvailable": 7,
+    "beer": [
+      "light",
+      "dark",
+      "red",
+      "cider"
+    ],
+    "wine": [
+      "red dry",
+      "red semi-sweet",
+      "white sweet"
+    ],
+    "cuisine": [
+      "european",
+      "italian"
+    ],
+    "site": "http://pivnaduma.kiev.ua/"
+  },
+  "Staromak": {
+    "name": "Staromak",
+    "location": "far",
+    "openHours": "13:00-03:00",
+    "placesAvailable": 25,
+    "beer": [
+      "light",
+      "dark",
+      "craft"
+    ],
+    "wine": [
+      "red dry",
+      "white dry"
+    ],
+    "cuisine": [
+      "european",
+      "czech",
+      "jewish"
+    ],
+    "site": "http://staromacek.com.ua/"
+  },
+  "Vinsanto": {
+    "name": "Vinsanto",
+    "location": "middle",
+    "openHours": "13:00-03:00",
+    "placesAvailable": 5,
+    "wine": [
+      "red dry",
+      "white dry"
+    ],
+    "cuisine": [
+      "italian"
+    ],
+    "site": "https://vinsanto.com.ua/"
+  },
+  "Error": {
+    "name": "Not valid name",
+    "age": 10
+  }
+}
